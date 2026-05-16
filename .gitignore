@@ -2,6 +2,7 @@
 .~lock.*
 _*
 inputs/
+junk_*
 outputs/
 
 # Byte-compiled / optimized / DLL files

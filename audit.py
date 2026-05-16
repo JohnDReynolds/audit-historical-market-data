@@ -98,11 +98,12 @@ class Audit:
 
     def _actionable_or_non_actionable(self, actionable: bool) -> pl.DataFrame:
         """Return the actionable or nonactionable audit results"""
-        return (
+        df = (
             audit_outputs.category_actionable(self.audited_returns)
             if actionable
             else audit_outputs.category_non_actionable(self.audited_returns)
         )
+        return df.rename(self._display_column_names(df.columns))
 
     def audit_adjusted_ohlcv(self) -> pl.DataFrame:
         """Audit Massive split-adjusted OHLCV values.
@@ -191,6 +192,19 @@ class Audit:
         df.with_columns(pl.col(pl.Float64).round(DISPLAY_DECIMALS)).write_csv(csv_string)
         return csv_string.getvalue()
 
+    @staticmethod
+    def _display_column_names(column_names: Sequence[str]) -> dict[str, str]:
+        """xxx"""
+        display_column_names: dict[str, str] = {}
+        for key in column_names:
+            if key.startswith("ms_"):
+                display_column_names[key] = f"Massive {key}"
+            elif key.startswith("yf_"):
+                display_column_names[key] = f"yFinance {key}"
+            else:
+                display_column_names[key] = key.replace("_", " ")
+        return display_column_names
+
     def html_audit_report(self, actionable: bool) -> str:
         """Create an HTML audit report from a DataFrame.
 
@@ -204,23 +218,19 @@ class Audit:
         df = self._actionable_or_non_actionable(actionable)
 
         narrative_columns = {
-            "evidence_summary",
-            "real_world_event",
-            "massive_problem_summary",
-            "massive_why_incorrect",
-            "massive_fix_action",
+            "evidence summary",
+            "real world event",
+            "massive problem summary",
+            "massive why incorrect",
+            "massive fix action",
         }
-        priority_column = "review_priority"
-        status_columns = {"event_detected", "likely_correct_source", "confidence_level"}
-        url_columns = {"primary_source_url", "secondary_source_url"}
+        priority_column = "review priority"
+        status_columns = {"event detected", "likely correct source", "confidence level"}
+        url_columns = {"primary source url", "secondary source url"}
 
         def escape(value: str) -> str:
             """Escape HTML text without changing slashes."""
             return html_escape(value, quote=False)
-
-        def display_header(column_name: str) -> str:
-            """Return a display header that wraps more naturally."""
-            return column_name.replace("_", " ")
 
         def cell_classes(fieldname: str, value: str) -> list[str]:
             """Return CSS classes for a table cell."""
@@ -258,7 +268,7 @@ class Audit:
                 "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
                 "margin:24px;color:#1f2937;background:#f8fafc}",
                 ".title{display:flex;align-items:baseline;gap:10px;margin:0 0 16px}",
-                ".title-main{font-size:22px;font-weight:700}",
+                ".title-main{font-size:22px;font-weight:700;color:#1e3a8a}",
                 ".title-path{font-size:13px;color:#64748b}",
                 ".table-wrap{overflow:auto;border:1px solid #cbd5e1;background:white}",
                 "table{border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.35}",
@@ -288,7 +298,7 @@ class Audit:
             ]
 
             for fieldname in fieldnames:
-                html_parts.append(f"<th>{escape(display_header(fieldname))}</th>")
+                html_parts.append(f"<th>{escape(fieldname)}</th>")
 
             html_parts.extend(["</tr></thead>", "<tbody>"])
 

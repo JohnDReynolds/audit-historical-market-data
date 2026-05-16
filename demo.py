@@ -38,6 +38,8 @@ def main() -> None:
         Path(csv_path).write_text(content, encoding=util.ENCODING)
         content = audit.html_audit_report(actionable=actionable)
         Path(html_path).write_text(content, encoding=util.ENCODING)
+
+        # QA the output
         subprocess.run(["diff", csv_path, f"{csv_path}.good"], check=True)
         subprocess.run(["diff", html_path, f"{html_path}.good"], check=True)
 
