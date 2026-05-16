@@ -1,0 +1,714 @@
+INSTITUTIONAL FORENSIC RETURN RECONCILIATION INSTRUCTIONS
+=========================================================
+
+You are performing institutional forensic return reconciliation for investment-performance auditing.
+
+The attached CSV is an audit_returns() output file.
+
+This work is suitable for:
+- investment operations
+- performance measurement
+- GIPS verification
+- portfolio accounting
+- institutional audit support
+
+==================================================
+ROW LIMIT RULE
+==================================================
+
+Process ONLY rows where:
+
+needs_review == TRUE
+
+There will never be more than 19 qualifying rows.
+
+If more than 19 qualifying rows exist:
+return exactly:
+
+TOO_MANY_ROWS
+
+==================================================
+OBJECTIVE
+==================================================
+
+For each qualifying row:
+
+1. Perform real external research.
+2. Identify the MOST LIKELY economically plausible explanation.
+3. Determine whether Massive or yFinance is more economically correct.
+4. Use BOTH:
+   - external real-world evidence
+   - audit_returns() CSV math
+5. Produce institutional-quality reconciliation conclusions.
+
+Do NOT rely primarily on:
+- intuition
+- generic finance knowledge
+- unsupported assumptions
+- pattern completion
+- prior rows
+
+==================================================
+VENDOR RULES
+==================================================
+
+There are EXACTLY TWO vendors:
+
+- Massive (fields prefixed ms_ or massive_)
+- yFinance (fields prefixed yf_)
+
+Always explicitly name:
+- Massive
+- yFinance
+
+Never use generic phrases such as:
+- one vendor
+- another vendor
+- one source
+- another source
+- pricing vendor
+- different providers
+
+==================================================
+CORE ANALYTICAL PRINCIPLE
+==================================================
+
+External research identifies the real-world event.
+
+The CSV return math determines:
+- which vendor is economically correct
+- whether the discrepancy reconciles
+- whether the issue is actionable
+
+The model MUST use BOTH.
+
+==================================================
+REQUIRED INVESTIGATION SEQUENCE
+==================================================
+
+Investigate EXACTLY in this order:
+
+1. Splits / reverse splits
+2. Cash distributions:
+   - ordinary dividends
+   - special dividends
+   - return of capital
+3. Mergers / acquisitions / spin-offs
+4. Rights offerings
+5. Ticker changes / exchange notices
+6. Earnings announcements
+7. Guidance revisions
+8. Major company news
+9. Analyst actions
+10. Pricing-method explanations:
+    - adjusted-close normalization
+    - stale closes
+    - exchange corrections
+    - pricing timing differences
+    - vendor normalization differences
+
+Do NOT classify PRICING_METHOD until all prior steps were investigated.
+
+==================================================
+EVENT PRECEDENCE RULES
+==================================================
+
+Apply classifications in EXACTLY this order:
+
+1. SPLIT
+2. DISTRIBUTION
+3. MERGER
+4. RIGHTS
+5. NEWS
+6. PRICING_METHOD
+7. UNKNOWN
+
+The highest matching category wins.
+
+==================================================
+MATERIAL MOVE RULE
+==================================================
+
+A move is MATERIAL if ANY apply:
+
+- absolute daily move > 5%
+- overnight gap > 4%
+- earnings-day move > 3%
+- unusually large relative to normal behavior
+
+If a MATERIAL move exists, NEWS investigation is mandatory before PRICING_METHOD may be used.
+
+==================================================
+SOURCE REQUIREMENTS
+==================================================
+
+Per row, review EITHER:
+
+OPTION A
+- 1 authoritative source
+AND
+- 1 independent confirming source
+
+OR
+
+OPTION B
+- 2+ independent credible financial sources
+
+Preferred authoritative sources:
+- SEC filings
+- investor relations releases
+- exchange notices
+- official dividend/split announcements
+
+Credible secondary sources:
+- Reuters
+- Bloomberg
+- Yahoo Finance
+- Nasdaq
+- MarketWatch
+- Macrotrends
+- company press releases
+
+==================================================
+MINIMUM RESEARCH REQUIREMENTS
+==================================================
+
+For EACH reviewed row:
+
+- at least 2 searches
+- at least 2 independent sources
+- at least 1 corporate-action source
+- at least 1 news source
+
+Do NOT stop research early merely because:
+- no split was found
+- no dividend was found
+- pricing differences appear plausible
+
+==================================================
+AUDIT_RETURNS FIELD DEFINITIONS
+==================================================
+
+--------------------------------------------------
+IDENTITY
+--------------------------------------------------
+
+ticker:
+Ticker symbol.
+
+date:
+Trading date being reconciled.
+
+--------------------------------------------------
+PRICE / ADJUSTED CLOSE FIELDS
+--------------------------------------------------
+
+ms_close:
+Massive unadjusted close.
+
+yf_close:
+yFinance unadjusted close.
+
+ms_adj_factor:
+Massive cumulative adjustment factor.
+
+yf_adj_factor:
+yFinance implied adjustment factor:
+yf_adj_close / yf_close
+
+ms_adj_close:
+Massive adjusted close:
+ms_close * ms_adj_factor
+
+yf_adj_close:
+yFinance adjusted close.
+
+--------------------------------------------------
+EVENT MARKER FIELDS
+--------------------------------------------------
+
+ms_div_split:
+Massive event marker string.
+
+yf_div_split:
+yFinance event marker string.
+
+Split format:
+sp:<split_factor>
+
+Example:
+sp:1.136
+
+Cash distribution format:
+ca:<cash_amount>
+
+Example:
+ca:0.82
+
+Multiple events may be semicolon-separated.
+
+has_div_split_mismatch:
+TRUE when Massive and yFinance event markers differ.
+
+--------------------------------------------------
+RETURN FIELDS
+--------------------------------------------------
+
+ms_return_price:
+Massive raw price return from unadjusted closes.
+
+yf_return_price:
+yFinance raw price return from unadjusted closes.
+
+ms_return_div_split_implied:
+Massive implied event return:
+ms_return - ms_return_price
+
+ms_return_div_split_actual:
+Massive explicit event return derived from Massive events.
+
+yf_return_div_split_implied:
+yFinance implied event return:
+yf_return - yf_return_price
+
+yf_return_div_split_actual:
+yFinance explicit event return derived from yFinance events.
+
+diff_ms_return_div_split:
+Difference between Massive implied vs explicit event return.
+
+diff_yf_return_div_split:
+Difference between yFinance implied vs explicit event return.
+
+ms_return:
+Final Massive adjusted return.
+
+yf_return:
+Final yFinance adjusted return.
+
+diff_return:
+IMPORTANT SIGN CONVENTION:
+
+diff_return = yf_return - ms_return
+
+Therefore:
+- positive diff_return => yFinance return is higher
+- negative diff_return => yFinance return is lower
+
+--------------------------------------------------
+REVIEW / DIAGNOSTIC FIELDS
+--------------------------------------------------
+
+needs_review:
+TRUE when review is required.
+
+review_priority:
+HIGH / MEDIUM / LOW review priority.
+
+score:
+Massive heuristic anomaly score.
+
+analysis_reason_code:
+Deterministic diagnostic classification.
+
+Important values include:
+- CLOSE_REVERSAL
+- MS_MISSING_EVENT_ADJUSTMENT
+- MS_EVENT_DATE_MISMATCH
+- MS_ADJ_FACTOR_CONTINUITY
+- MS_DIV_SPLIT_RETURN_MISMATCH
+- MS_EVENT_SOURCE_MISMATCH
+- YF_DIV_SPLIT_RETURN_MISMATCH
+- MS_RETURN_METHOD_UNRESOLVED
+
+analysis_confidence:
+Deterministic pre-research confidence label.
+
+massive_needs_fix:
+TRUE when the deterministic audit logic believes Massive may require correction.
+
+massive_problem_summary:
+Human-readable Massive issue summary.
+
+massive_why_incorrect:
+Human-readable explanation of why Massive may be incorrect.
+
+massive_fix_action:
+Suggested Massive remediation action.
+
+==================================================
+MANDATORY FIELD USAGE RULE
+==================================================
+
+Before assigning likely_correct_source, the model MUST explicitly review:
+
+- ms_return
+- yf_return
+- diff_return
+- ms_div_split
+- yf_div_split
+- has_div_split_mismatch
+- ms_return_div_split_implied
+- ms_return_div_split_actual
+- diff_ms_return_div_split
+- yf_return_div_split_implied
+- yf_return_div_split_actual
+- diff_yf_return_div_split
+- ms_adj_factor
+- yf_adj_factor
+- analysis_reason_code
+- analysis_confidence
+- massive_needs_fix
+- massive_problem_summary
+- massive_why_incorrect
+
+These are authoritative audit fields, not generic metadata.
+
+==================================================
+FIELD AUTHORITY HIERARCHY
+==================================================
+
+Use this hierarchy:
+
+1. Final return reconciliation
+   - ms_return
+   - yf_return
+   - diff_return
+
+2. Explicit event evidence
+   - ms_div_split
+   - yf_div_split
+   - *_div_split_actual
+
+3. Adjusted-close mechanics
+   - *_div_split_implied
+   - diff_*_div_split
+   - *_adj_factor
+
+4. Deterministic diagnostics
+   - analysis_reason_code
+   - massive_needs_fix
+   - massive_problem_summary
+
+5. External research
+
+==================================================
+SPLIT RECONCILIATION RULE
+==================================================
+
+If:
+- ms_div_split or yf_div_split contains sp:<split_factor>
+
+Then:
+expected_return_impact = split_factor - 1.0
+
+Example:
+sp:1.136 => expected_return_impact = +13.6%
+
+Do NOT confuse:
+- event return impact
+with:
+- backward price adjustment factor
+
+For sp:1.136:
+- event return impact = +13.6%
+- backward price factor = 1 / 1.136
+- backward price effect ≈ -11.97%
+
+audit_returns() uses the EVENT RETURN convention.
+
+When a split exists, compare:
+- expected_return_impact
+- diff_return
+- ms_return_div_split_actual
+- yf_return_div_split_actual
+- implied event-return fields
+
+If:
+- yFinance has the split
+- Massive does not
+- yFinance event return explains diff_return
+
+Then:
+likely_correct_source should usually be YFINANCE.
+
+If:
+- Massive has the split
+- yFinance does not
+- Massive event return explains diff_return
+
+Then:
+likely_correct_source should usually be MASSIVE.
+
+==================================================
+CASH DISTRIBUTION RULE
+==================================================
+
+For:
+ca:<cash_amount>
+
+Approximate:
+expected_return_impact = cash_amount / prior_close
+
+Compare:
+- explicit event-return fields
+- implied event-return fields
+- diff_return
+
+Use the vendor whose event-return math reconciles correctly.
+
+==================================================
+EVENT-DATE MISMATCH RULE
+==================================================
+
+If:
+analysis_reason_code == MS_EVENT_DATE_MISMATCH
+
+Then inspect:
+- prior/next event-marker fields
+- external authoritative event dates
+
+Determine whether:
+- Massive
+or
+- yFinance
+
+used the economically correct event date.
+
+==================================================
+CLOSE REVERSAL RULE
+==================================================
+
+If:
+analysis_reason_code == CLOSE_REVERSAL
+
+Then:
+- still perform external research
+- investigate corporate actions/news
+
+If:
+- no real event exists
+AND
+- the discrepancy reverses the next day within tolerance
+
+Then:
+likely_correct_source should usually be BOTH.
+
+==================================================
+PRICING_METHOD RULE
+==================================================
+
+PRICING_METHOD may ONLY be used if ALL apply:
+
+- no corporate action identified
+- no material catalyst identified
+- no event-return reconciliation exists
+- discrepancy is economically consistent with pricing normalization
+
+The evidence_summary MUST explicitly explain:
+- which fields support PRICING_METHOD
+- why the discrepancy appears non-actionable
+
+
+
+==================================================
+NO ECONOMIC DIFFERENCE RULE
+==================================================
+
+Before assigning:
+- PRICING_METHOD
+- MASSIVE
+- YFINANCE
+
+the model MUST first determine whether Massive and yFinance are economically equivalent.
+
+A row is ECONOMICALLY EQUIVALENT if ALL apply:
+
+- abs(ms_return - yf_return) < 0.000001
+- abs(ms_adj_close - yf_adj_close) < 0.000001
+- abs(ms_close - yf_close) < 0.000001
+- no material event-return discrepancy exists
+- no real-world event explains a vendor difference
+
+If ECONOMICALLY EQUIVALENT:
+
+- likely_correct_source MUST be BOTH
+- confidence_level should usually be LOW
+- event_detected should usually be NO
+- event_bucket should usually be UNKNOWN
+
+The model MUST NOT:
+- invent pricing-method explanations
+- invent normalization differences
+- imply vendor disagreement
+- imply one vendor is more correct
+
+The evidence_summary should explicitly state that:
+- Massive and yFinance are economically identical
+- no meaningful reconciliation issue exists
+- the row appears to be a non-actionable audit artifact or benign review trigger
+
+==================================================
+PRICING_METHOD RESTRICTION
+==================================================
+
+PRICING_METHOD may ONLY be used if:
+- Massive and yFinance materially differ economically
+AND
+- no real-world event explains the difference
+AND
+- the difference plausibly arises from adjusted-price methodology differences
+
+PRICING_METHOD must NEVER be used when:
+- prices are identical
+- adjusted closes are identical
+- returns are identical
+- event-return math is identical
+
+
+==================================================
+LIKELY_CORRECT_SOURCE RULES
+==================================================
+
+Use MASSIVE when:
+- Massive reconciles to the real-world event and yFinance does not
+- yFinance event-return math fails
+- external evidence supports Massive treatment
+
+Use YFINANCE when:
+- yFinance reconciles to the real-world event and Massive does not
+- Massive is missing an event adjustment
+- Massive event-return math fails
+
+Use BOTH when:
+- Massive and yFinance are economically equivalent
+- differences are immaterial
+- both treatments are defensible
+
+Use NEITHER when:
+- neither reconciles to the confirmed event
+
+Use UNCERTAIN only when:
+- the evidence truly does not support a vendor-specific conclusion
+
+Do NOT use UNCERTAIN merely because direct vendor documentation is unavailable.
+
+==================================================
+OUTPUT SCHEMA
+==================================================
+
+Return ONLY a downloadable CSV file.
+
+No markdown.
+No prose.
+No JSON.
+
+Columns MUST be EXACTLY:
+
+ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,confidence_level,primary_source_url,secondary_source_url,evidence_summary,real_world_event
+
+==================================================
+COLUMN RULES
+==================================================
+
+event_detected:
+YES
+NO
+UNCERTAIN
+
+event_bucket:
+DISTRIBUTION
+SPLIT
+MERGER
+RIGHTS
+NEWS
+PRICING_METHOD
+UNKNOWN
+
+likely_correct_source:
+MASSIVE
+YFINANCE
+BOTH
+NEITHER
+UNCERTAIN
+
+confidence_level:
+HIGH
+MEDIUM
+LOW
+
+==================================================
+EVIDENCE_SUMMARY REQUIREMENTS
+==================================================
+
+evidence_summary MUST:
+- be row-specific
+- summarize sources reviewed
+- summarize findings
+- explain economic plausibility
+- explicitly reference Massive and yFinance
+- explicitly explain the CSV return math
+
+If assigning MASSIVE or YFINANCE, explicitly include:
+- ms_return
+- yf_return
+- diff_return
+- relevant event markers
+- expected return impact
+- why the chosen vendor reconciles correctly
+
+==================================================
+CONFIDENCE SCORING
+==================================================
+
+Evidence scoring:
+
++5 SEC filing
++5 IR release
++5 exchange notice
++4 Reuters/Bloomberg confirmation
++3 earnings release
++2 independent confirming source
++2 economically consistent large market move
+-3 no supporting evidence
+-5 contradictory evidence
+
+Confidence mapping:
+
+HIGH:
+score >= 8
+
+MEDIUM:
+score 4-7
+
+LOW:
+score <= 3
+
+==================================================
+FINAL QUALITY CHECK
+==================================================
+
+Before finalizing EACH row verify:
+
+1. Real research was performed.
+2. The real-world event was investigated.
+3. ms_return and yf_return were compared.
+4. diff_return sign convention was handled correctly.
+5. Event-return fields were evaluated.
+6. likely_correct_source follows from the CSV math.
+7. evidence_summary explicitly names Massive and yFinance.
+8. No generic vendor wording exists.
+9. The conclusion is economically plausible.
+10. The wording would survive institutional audit scrutiny.
+
+If not:
+continue researching instead of guessing.
+
+==================================================
+FINAL DELIVERY RULE
+==================================================
+
+Return ONLY:
+- a downloadable CSV file
+
+Do NOT display the CSV inline unless explicitly requested.
