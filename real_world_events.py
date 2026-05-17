@@ -5,13 +5,7 @@ from typing import TypeVar, cast
 
 # Third-party imports.
 import polars as pl
-
-# Project imports.
-from audit_schema import (
-    REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE,
-    REAL_WORLD_EVENT_REL_RETURN_TOLERANCE,
-)
-import utilities as util
+import audit_schema as schema
 
 # Type aliases.
 _FrameT = TypeVar("_FrameT", pl.DataFrame, pl.LazyFrame)
@@ -72,16 +66,34 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
         ``analysis_reason_code``.
     """
     real_world_match_tolerance_expr: pl.Expr = pl.max_horizontal(
-        pl.lit(REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE),
-        pl.col("expected_return_impact").abs() * REAL_WORLD_EVENT_REL_RETURN_TOLERANCE,
+        pl.lit(schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE),
+        pl.col("expected_return_impact").abs() * schema.REAL_WORLD_EVENT_REL_RETURN_TOLERANCE,
+    )
+
+    massive_focused_reason_codes: list[str] = [
+        "MS_ADJ_FACTOR_CONTINUITY",
+        "MS_EVENT_SOURCE_MISMATCH",
+        "MS_DIV_SPLIT_RETURN_MISMATCH",
+        "MS_RETURN_METHOD_UNRESOLVED",
+    ]
+
+    normalized_expected_return_impact: pl.Expr = (
+        pl.when(
+            pl.col("event_bucket").is_in(["SPLIT", "SPINOFF"])
+            & pl.col("expected_return_impact").is_not_null()
+            & (pl.col("expected_return_impact").abs() > 1.0)
+        )
+        .then(pl.col("expected_return_impact") - pl.col("expected_return_impact").sign())
+        .otherwise(pl.col("expected_return_impact"))
     )
 
     return (
-        df.with_columns(
+        df.with_columns(normalized_expected_return_impact.alias("expected_return_impact"))
+        .with_columns(
             (
                 pl.col("diff_return").is_not_null()
                 & (pl.col("event_detected") == "YES")
-                & pl.col("event_bucket").is_in(["DISTRIBUTION", "SPLIT", "MERGER", "RIGHTS"])
+                & pl.col("event_bucket").is_in(schema.REAL_WORLD_EVENT_RETURN_BUCKETS)
                 & pl.col("expected_return_impact").is_not_null()
                 & (
                     ((pl.col("diff_return").abs() - pl.col("expected_return_impact").abs()).abs())
@@ -101,20 +113,23 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
         )
         .with_columns(
             pl.when(
+                (pl.col("likely_correct_source") == "MASSIVE")
+                & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+            )
+            .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
+            .when(
+                (pl.col("likely_correct_source") == "MASSIVE")
+                & pl.col("analysis_reason_code").is_in(massive_focused_reason_codes)
+            )
+            .then(pl.lit("YF_MISSING_REAL_WORLD_EVENT"))
+            .when(
                 pl.col("real_world_event_supports_massive")
                 & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
             )
             .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
             .when(
                 pl.col("real_world_event_supports_massive")
-                & pl.col("analysis_reason_code").is_in(
-                    [
-                        "MS_ADJ_FACTOR_CONTINUITY",
-                        "MS_EVENT_SOURCE_MISMATCH",
-                        "MS_DIV_SPLIT_RETURN_MISMATCH",
-                        "MS_RETURN_METHOD_UNRESOLVED",
-                    ]
-                )
+                & pl.col("analysis_reason_code").is_in(massive_focused_reason_codes)
             )
             .then(pl.lit("YF_MISSING_REAL_WORLD_EVENT"))
             .when(
@@ -163,7 +178,7 @@ def get_real_world_events_path(from_date: str, to_date: str) -> str:
     Returns:
         Path to the optional real-world events CSV for this audit window.
     """
-    return f"{util.INPUT_DIRECTORY}real_world_events.{from_date}.{to_date}.csv"
+    return f"{schema.INPUT_DIRECTORY}real_world_events.{from_date}.{to_date}.csv"
 
 
 def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:

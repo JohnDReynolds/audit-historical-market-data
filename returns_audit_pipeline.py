@@ -7,13 +7,8 @@ from typing import cast
 import polars as pl
 
 # Project imports.
-from audit_schema import (
-    ADJ_FACTOR_CHANGE_TOLERANCE as _ADJ_FACTOR_CHANGE_TOLERANCE,
-    REVERSAL_TOLERANCE as _REVERSAL_TOLERANCE,
-    TOLERANCE_4 as _TOLERANCE_4,
-    TOLERANCE_6 as _TOLERANCE_6,
-)
 import audit_classification
+import audit_schema as schema
 import real_world_events
 import returns_builders
 from massive_data import MassiveData
@@ -96,10 +91,10 @@ def build_returns_audit_lf(
                 "ms_return",
                 "ms_return_price",
                 "ms_return_div_split_implied",
-                "score",
+                "heuristic_anomaly_score",
                 "ms_div_split",
                 "yf_div_split",
-                # Heuristic audit score inputs
+                # Heuristic anomaly score inputs
                 "abs_return",
                 "prior_return",
                 "next_return",
@@ -166,7 +161,7 @@ def build_returns_audit_lf(
             ),
             pl.when(pl.col("yf_return").is_null() | pl.col("ms_return").is_null())
             .then(None)
-            .when(pl.col("total_return_diff").abs() < _TOLERANCE_4)
+            .when(pl.col("total_return_diff").abs() < schema.TOLERANCE_4)
             .then(None)
             .otherwise(pl.col("total_return_diff"))
             .alias("diff_return"),
@@ -187,7 +182,7 @@ def build_returns_audit_lf(
                 (
                     pl.col("ms_return_div_split_implied") - pl.col("ms_return_div_split_actual")
                 ).abs()
-                < _TOLERANCE_6
+                < schema.TOLERANCE_6
             )
             .then(None)
             .otherwise(
@@ -203,7 +198,7 @@ def build_returns_audit_lf(
                 (
                     pl.col("yf_return_div_split_implied") - pl.col("yf_return_div_split_actual")
                 ).abs()
-                < _TOLERANCE_6
+                < schema.TOLERANCE_6
             )
             .then(None)
             .otherwise(
@@ -220,7 +215,7 @@ def build_returns_audit_lf(
             pl.col("diff_yf_return_div_split")
             .is_not_null()
             .alias("is_yf_div_split_return_mismatch"),
-            (pl.col("adj_factor_change_diff").abs() > _ADJ_FACTOR_CHANGE_TOLERANCE).alias(
+            (pl.col("adj_factor_change_diff").abs() > schema.ADJ_FACTOR_CHANGE_TOLERANCE).alias(
                 "is_adj_factor_mismatch"
             ),
         )
@@ -273,7 +268,7 @@ def build_returns_audit_lf(
                 & ~pl.col("has_ms_event")
                 & pl.col("is_yf_div_split_return_mismatch")
                 & ~pl.col("is_ms_div_split_return_mismatch")
-                & (pl.col("yf_return_div_split_actual").abs() > _TOLERANCE_4)
+                & (pl.col("yf_return_div_split_actual").abs() > schema.TOLERANCE_4)
                 & (
                     (
                         # Split-like source differences can show up as a gap
@@ -282,7 +277,7 @@ def build_returns_audit_lf(
                             pl.col("source_price_event_return")
                             - pl.col("yf_return_div_split_actual")
                         ).abs()
-                        <= _TOLERANCE_4
+                        <= schema.TOLERANCE_4
                     )
                     | (
                         # Cash-dividend differences usually do not create a
@@ -290,7 +285,7 @@ def build_returns_audit_lf(
                         # total adjusted-return difference instead. Use the
                         # explicit event-return value when it reconciles.
                         (pl.col("total_return_diff") - pl.col("yf_return_div_split_actual")).abs()
-                        <= _TOLERANCE_4
+                        <= schema.TOLERANCE_4
                     )
                     | (
                         # Some vendors apply the cash-dividend adjustment in
@@ -302,7 +297,7 @@ def build_returns_audit_lf(
                         # issue as a missing Massive event adjustment rather
                         # than as a yFinance event-return mismatch.
                         (pl.col("total_return_diff") - pl.col("yf_return_div_split_implied")).abs()
-                        <= _TOLERANCE_4
+                        <= schema.TOLERANCE_4
                     )
                 )
             ).alias("is_ms_missing_event_adjustment")
@@ -312,14 +307,14 @@ def build_returns_audit_lf(
                 (pl.col("total_return_diff") * pl.col("next_total_return_diff") < 0.0)
                 & (
                     (pl.col("total_return_diff") + pl.col("next_total_return_diff")).abs()
-                    <= _REVERSAL_TOLERANCE
+                    <= schema.REVERSAL_TOLERANCE
                 )
             ).alias("is_next_close_reversal"),
             (
                 (pl.col("total_return_diff") * pl.col("prior_total_return_diff") < 0.0)
                 & (
                     (pl.col("total_return_diff") + pl.col("prior_total_return_diff")).abs()
-                    <= _REVERSAL_TOLERANCE
+                    <= schema.REVERSAL_TOLERANCE
                 )
             ).alias("is_prior_close_reversal"),
         )
@@ -378,8 +373,8 @@ def build_returns_audit_lf(
             "total_return_diff",
             "prior_total_return_diff",
             "next_total_return_diff",
-            # Heuristic audit score
-            "score",
+            # Heuristic anomaly score
+            "heuristic_anomaly_score",
             # "diff_score",
             "abs_return",
             "prior_return",

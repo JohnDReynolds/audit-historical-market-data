@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 from massive import RESTClient
 
 # Project imports.
+import audit_schema as schema
 import utilities as util
 
 # ============================================================================
@@ -214,7 +215,7 @@ class MassiveData:
             "dividend_type",
         ]
 
-        file_path: str = self._file_path(util.PATH_MASSIVE_DIVIDENDS)
+        file_path: str = self._file_path(schema.PATH_MASSIVE_DIVIDENDS)
 
         # Download data only if needed.
         if self.always_download or not Path(file_path).exists():
@@ -226,11 +227,11 @@ class MassiveData:
                 # numeric fields as strings and fail during arithmetic.
                 writer.writerow(
                     {
-                        "ticker": util.DUMMY_TICKER,
-                        "ex_dividend_date": util.DUMMY_DATE,
-                        "pay_date": util.DUMMY_DATE,
-                        "record_date": util.DUMMY_DATE,
-                        "declaration_date": util.DUMMY_DATE,
+                        "ticker": schema.DUMMY_TICKER,
+                        "ex_dividend_date": schema.DUMMY_DATE,
+                        "pay_date": schema.DUMMY_DATE,
+                        "record_date": schema.DUMMY_DATE,
+                        "declaration_date": schema.DUMMY_DATE,
                         "cash_amount": 0,
                         "frequency": 0,
                         "dividend_type": "",
@@ -348,9 +349,9 @@ class MassiveData:
 
         file_path: str = self._file_path(
             (
-                util.PATH_MASSIVE_ADJUSTED_PRICES
+                schema.PATH_MASSIVE_ADJUSTED_PRICES
                 if adjusted
-                else util.PATH_MASSIVE_UNADJUSTED_PRICES
+                else schema.PATH_MASSIVE_UNADJUSTED_PRICES
             )
         )
 
@@ -458,7 +459,7 @@ class MassiveData:
             "split_to",
         ]
 
-        file_path: str = self._file_path(util.PATH_MASSIVE_SPLITS)
+        file_path: str = self._file_path(schema.PATH_MASSIVE_SPLITS)
 
         # Download data only if needed.
         if self.always_download or not Path(file_path).exists():
@@ -470,8 +471,8 @@ class MassiveData:
                 # numeric fields as strings and fail during arithmetic.
                 writer.writerow(
                     {
-                        "ticker": util.DUMMY_TICKER,
-                        "execution_date": util.DUMMY_DATE,
+                        "ticker": schema.DUMMY_TICKER,
+                        "execution_date": schema.DUMMY_DATE,
                         "split_from": 0,
                         "split_to": 0,
                     }

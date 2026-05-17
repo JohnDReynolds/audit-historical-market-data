@@ -26,6 +26,7 @@ import polars as pl
 import yfinance as yf
 
 # Project imports
+import audit_schema as schema
 import utilities as util
 
 
@@ -132,7 +133,7 @@ class YFinanceData:
         ``self.from_date`` through ``self.to_date``. One CSV row is written per
         dividend event.
 
-        The output file path is ``util.PATH_YFINANCE_DIVIDENDS``.
+        The output file path is built from ``util.PATH_YFINANCE_DIVIDENDS``.
 
         Returns:
             LazyFrame containing dividend event data.
@@ -150,7 +151,7 @@ class YFinanceData:
         ]
 
         # Download the data.
-        file_path = self._file_path(util.PATH_YFINANCE_DIVIDENDS)
+        file_path = self._file_path(schema.PATH_YFINANCE_DIVIDENDS)
         if self.always_download or not Path(file_path).exists():
             print("\n#################### Downloading yFinance Dividends...")
             with util.safe_csv_dict_writer(file_path, fieldnames) as writer:
@@ -159,8 +160,8 @@ class YFinanceData:
                 # numeric fields as strings and fail during arithmetic.
                 writer.writerow(
                     {
-                        "ticker": util.DUMMY_TICKER,
-                        "ex_dividend_date": util.DUMMY_DATE,
+                        "ticker": schema.DUMMY_TICKER,
+                        "ex_dividend_date": schema.DUMMY_DATE,
                         "cash_amount": 0,
                     }
                 )
@@ -213,7 +214,7 @@ class YFinanceData:
 
         One CSV row is written per ticker/date daily bar.
 
-        The output file path is ``util.PATH_YFINANCE_PRICES``.
+        The output file path is built from ``util.PATH_YFINANCE_PRICES``.
 
         Note:
             yfinance's ``end`` date is treated as exclusive for price downloads.
@@ -223,7 +224,6 @@ class YFinanceData:
 
         Raises:
             ValueError: If ``util.normalize_ticker()`` rejects a ticker.
-            RuntimeError: If CSV writing fails.
         """
         # Define the CSV schema explicitly so downstream ETL receives stable column
         # names and a stable column order.
@@ -239,7 +239,7 @@ class YFinanceData:
         ]
 
         # Download the data.
-        file_path = self._file_path(util.PATH_YFINANCE_PRICES)
+        file_path = self._file_path(schema.PATH_YFINANCE_PRICES)
         if self.always_download or not Path(file_path).exists():
             print("\n#################### Downloading yFinance OHLCV...")
             with util.safe_csv_dict_writer(file_path, fieldnames) as writer:
@@ -250,7 +250,7 @@ class YFinanceData:
 
                     try:
                         # yFinance treats end as exclusive, so the helper adds one day
-                        # to util.TO_DATE before making the request.
+                        # to self.to_date before making the request.
                         data: pd.DataFrame = (
                             yf.download(  # pyright: ignore[reportUnknownMemberType]
                                 normalized_ticker,
@@ -306,7 +306,7 @@ class YFinanceData:
         ``self.tickers`` and filters them to the inclusive range ``self.from_date``
         through ``self.to_date``. One CSV row is written per split event.
 
-        The output file path is ``util.PATH_YFINANCE_SPLITS``.
+        The output file path is built from ``util.PATH_YFINANCE_SPLITS``.
 
         Returns:
             LazyFrame containing split event data.
@@ -324,7 +324,7 @@ class YFinanceData:
         ]
 
         # Download the data.
-        file_path = self._file_path(util.PATH_YFINANCE_SPLITS)
+        file_path = self._file_path(schema.PATH_YFINANCE_SPLITS)
         if self.always_download or not Path(file_path).exists():
             print("\n#################### Downloading yFinance Splits...")
             with util.safe_csv_dict_writer(file_path, fieldnames) as writer:
@@ -333,8 +333,8 @@ class YFinanceData:
                 # trying to do arithmetic.
                 writer.writerow(
                     {
-                        "ticker": util.DUMMY_TICKER,
-                        "execution_date": util.DUMMY_DATE,
+                        "ticker": schema.DUMMY_TICKER,
+                        "execution_date": schema.DUMMY_DATE,
                         "split_ratio": 0,
                     }
                 )

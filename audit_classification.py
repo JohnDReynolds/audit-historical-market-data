@@ -7,7 +7,7 @@ from typing import TypeVar, cast
 import polars as pl
 
 # Project imports.
-from audit_schema import MIN_SCORE_TO_REVIEW
+import audit_schema as schema
 
 # Type aliases.
 _FrameT = TypeVar("_FrameT", pl.DataFrame, pl.LazyFrame)
@@ -98,7 +98,10 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
     return df_lf.with_columns(
         pl.when(~review_required_expr())
         .then(pl.lit(""))
-        .when(pl.col("diff_return").is_null() & (pl.col("score") >= MIN_SCORE_TO_REVIEW))
+        .when(
+            pl.col("diff_return").is_null()
+            & (pl.col("heuristic_anomaly_score") >= schema.MIN_SCORE_TO_REVIEW)
+        )
         .then(pl.lit("HIGH_SCORE_ANOMALY"))
         .when(pl.col("is_event_date_mismatch"))
         .then(pl.lit("MS_EVENT_DATE_MISMATCH"))
@@ -139,15 +142,48 @@ def add_massive_fix_guidance(
         Frame with Massive remediation flag, summary, explanation, action,
         and priority columns.
     """
+    existing_columns: list[str]
+
+    if isinstance(frame, pl.LazyFrame):
+        existing_columns = frame.collect_schema().names()
+    else:
+        existing_columns = frame.columns
+
+    if "likely_correct_source" not in existing_columns:
+        frame = cast(_FrameT, frame.with_columns(pl.lit("").alias("likely_correct_source")))
+
+    research_says_massive_correct: pl.Expr = pl.col("likely_correct_source").is_in(
+        ["MASSIVE", "BOTH"]
+    )
+    research_says_massive_incorrect: pl.Expr = pl.col("likely_correct_source").is_in(
+        ["YFINANCE", "NEITHER"]
+    )
+    research_aware_massive_needs_fix_expr: pl.Expr = (
+        pl.when(research_says_massive_correct)
+        .then(pl.lit(False))
+        .when(research_says_massive_incorrect)
+        .then(pl.lit(True))
+        .otherwise(massive_needs_fix_expr)
+    )
+
     return cast(
         _FrameT,
         frame.with_columns(
-            massive_needs_fix_expr.alias("massive_needs_fix"),
-            pl.when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
+            research_aware_massive_needs_fix_expr.alias("massive_needs_fix"),
+            pl.when(research_says_massive_correct)
+            .then(pl.lit(""))
+            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
             .then(
                 pl.lit(
                     "Massive is missing the event/adjustment needed to explain the return "
                     "difference."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+            .then(
+                pl.lit(
+                    "Massive appears to have the correct event amount on the wrong trading "
+                    "date."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
@@ -187,11 +223,21 @@ def add_massive_fix_guidance(
             )
             .otherwise(pl.lit(""))
             .alias("massive_problem_summary"),
-            pl.when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
+            pl.when(research_says_massive_correct)
+            .then(pl.lit(""))
+            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
             .then(
                 pl.lit(
                     "Massive appears incorrect because the comparison source and real-world "
                     "event evidence support an event/adjustment that Massive did not capture."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+            .then(
+                pl.lit(
+                    "Massive appears incorrect because the real-world event date and "
+                    "return math indicate the event should be recognized on a different "
+                    "trading date."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
@@ -233,12 +279,22 @@ def add_massive_fix_guidance(
             )
             .otherwise(pl.lit(""))
             .alias("massive_why_incorrect"),
-            pl.when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
+            pl.when(research_says_massive_correct)
+            .then(pl.lit(""))
+            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
             .then(
                 pl.lit(
                     "Add or correct the missing Massive dividend/split event, apply the "
                     "appropriate adjustment factor, and rebuild the adjusted close and "
                     "adjusted return chain."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+            .then(
+                pl.lit(
+                    "Move the Massive dividend/split event to the externally confirmed "
+                    "event date, remove the misstated adjacent-date event if present, and "
+                    "rebuild the adjusted close and adjusted return chain."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
@@ -282,28 +338,7 @@ def add_massive_fix_guidance(
             )
             .otherwise(pl.lit(""))
             .alias("massive_fix_action"),
-            pl.when(
-                pl.col("analysis_reason_code").is_in(
-                    [
-                        "MS_MISSING_EVENT_ADJUSTMENT",
-                        "MS_EVENT_DATE_MISMATCH",
-                        "MS_ADJ_FACTOR_CONTINUITY",
-                        "MS_DIV_SPLIT_RETURN_MISMATCH",
-                    ]
-                )
-            )
-            .then(pl.lit("HIGH"))
-            .when(
-                pl.col("analysis_reason_code").is_in(
-                    [
-                        "MS_EVENT_SOURCE_MISMATCH",
-                        "MS_RETURN_METHOD_UNRESOLVED",
-                        "HIGH_SCORE_ANOMALY",
-                    ]
-                )
-            )
-            .then(pl.lit("MEDIUM"))
-            .otherwise(pl.lit(""))
+            _massive_fix_priority_expr(research_aware_massive_needs_fix_expr)
             .alias("massive_fix_priority"),
         ),
     )
@@ -314,7 +349,8 @@ def add_review_columns(frame: _FrameT) -> _FrameT:
 
     Args:
         frame:
-            Return-audit frame with ``diff_return`` and ``score`` columns.
+            Return-audit frame with ``diff_return`` and
+            ``heuristic_anomaly_score`` columns.
 
     Returns:
         Frame with ``needs_review`` and ``review_priority`` columns.
@@ -341,7 +377,7 @@ def add_review_columns(frame: _FrameT) -> _FrameT:
         _FrameT,
         frame.with_columns(
             review_required_expr().alias("needs_review"),
-            _review_priority_expr().alias("review_priority"),
+            _triage_priority_expr().alias("review_priority"),
         ),
     )
 
@@ -389,14 +425,31 @@ def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def _review_priority_expr() -> pl.Expr:
-    """Return the expression that assigns review priority.
+def _massive_fix_priority_expr(massive_needs_fix_expr: pl.Expr) -> pl.Expr:
+    """Return the expression that assigns Massive fix priority.
+
+    Args:
+        massive_needs_fix_expr:
+            Expression used to decide whether Massive fix guidance applies.
 
     Returns:
-        Polars expression that assigns the review priority bucket.
+        Polars expression that assigns the Massive fix priority bucket.
     """
-    # A score >= 8 is particularly suspicious.
-    is_high_score = pl.col("score") >= 8
+    return (
+        pl.when(massive_needs_fix_expr)
+        .then(_triage_priority_expr())
+        .otherwise(pl.lit(""))
+    )
+
+
+def _triage_priority_expr() -> pl.Expr:
+    """Return the expression that assigns audit triage priority.
+
+    Returns:
+        Polars expression that assigns a HIGH, MEDIUM, LOW, or blank priority.
+    """
+    # A heuristic anomaly score >= 8 is particularly suspicious.
+    is_high_score = pl.col("heuristic_anomaly_score") >= 8
 
     # By definition, HIGH_SCORE_ANOMALY has no diff_return. So if both vendors appear
     # correct, then the anomaly is considered low-actionable and should not receive
@@ -411,7 +464,7 @@ def _review_priority_expr() -> pl.Expr:
         .then(pl.lit("HIGH"))
         .when(is_high_score & might_be_actionable)
         .then(pl.lit("MEDIUM"))
-        .when(pl.col("score") >= MIN_SCORE_TO_REVIEW)
+        .when(pl.col("heuristic_anomaly_score") >= schema.MIN_SCORE_TO_REVIEW)
         .then(pl.lit("LOW"))
         .otherwise(pl.lit(""))
     )
@@ -422,6 +475,8 @@ def review_required_expr() -> pl.Expr:
 
     Returns:
         Polars expression that is true when a row has a material return
-        difference or a high heuristic audit score.
+        difference or a high heuristic anomaly score.
     """
-    return pl.col("diff_return").is_not_null() | (pl.col("score") >= MIN_SCORE_TO_REVIEW)
+    return pl.col("diff_return").is_not_null() | (
+        pl.col("heuristic_anomaly_score") >= schema.MIN_SCORE_TO_REVIEW
+    )

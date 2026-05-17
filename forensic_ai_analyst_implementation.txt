@@ -1,0 +1,80 @@
+Please process each input file matching:
+
+outputs/*_audited_returns.*.*.csv
+
+For each input CSV file:
+- follow the research instructions in:
+  forensic_ai_analyst_instructions.txt
+- perform independent external research
+- generate institutional-quality conclusions
+- write the output to:
+  <original_input_path>.researched
+
+Example:
+outputs/2_audited_returns.2021-05-10.2026-05-10.csv
+->
+outputs/2_audited_returns.2021-05-10.2026-05-10.csv.researched
+
+STRICT EXECUTION DISCIPLINE
+===========================
+
+These instructions are mandatory and override any efficiency preference.
+
+You must process exactly one input CSV file at a time.
+
+For each input CSV file:
+1. Open/read only that input file.
+2. Identify rows where needs_review == TRUE.
+3. Perform all required research for only those rows.
+4. Write that file's .researched output.
+5. Validate that output file.
+6. Only after validation may you proceed to the next input file.
+
+Do NOT:
+- research rows from multiple input files in the same research pass
+- issue searches for multiple batches at once
+- parallelize web searches across files
+- reuse conclusions from another batch
+- assume a repeated ticker/event pattern is the same without fresh research
+- draft outputs for a later file before the current file is fully validated
+
+Sequential means research, reasoning, writing, and validation must all complete
+for the current file before any search, reasoning, or drafting begins for the
+next file.
+
+If you catch yourself researching or reasoning about more than one input file
+at a time:
+- stop
+- discard the cross-file reasoning
+- return to the current file only
+
+At the start of each file, explicitly reset context:
+"Beginning independent research for <input_file>. No conclusions from prior
+files are being used."
+
+Requirements:
+- first delete all existing output files matching:
+  outputs/*_audited_returns.*.*.csv.researched
+- process batch files in ascending numeric prefix order
+- process each input CSV file independently
+- process files sequentially, one file at a time
+- do not parallelize tasks
+- do not allow findings from one batch to influence another
+- do not modify source CSV files
+- output schema must exactly match the instruction file
+- preserve input row ordering within each output file
+- after each file, verify that the output file exists and has the required columns
+- produce a short processing summary at the end
+- when all CSV files are complete, concatenate all files matching:
+  outputs/*_audited_returns.*.*.csv.researched
+  into:
+  inputs/real_world_events.<date1>.<date2>.csv
+- use the two date segments from the audited_returns input filenames for
+  <date1> and <date2>
+- example final concatenated output path:
+  inputs/real_world_events.2021-05-10.2026-05-10.csv
+- when concatenating, include the header only once
+- preserve batch/file order during concatenation
+
+Before you begin:
+If these instructions are not crystal clear, please stop and ask me to clarify.

@@ -15,28 +15,26 @@ from pathlib import Path
 import polars as pl
 
 # Constants
-DUMMY_DATE = "1800-01-01"
-DUMMY_TICKER = "_d_u_m_m_y_"
 ENCODING = "utf-8"
 
-# Input file paths
-INPUT_DIRECTORY = "inputs/"
-PATH_MASSIVE_ADJUSTED_PRICES = f"{INPUT_DIRECTORY}massive_adjusted_prices"
-PATH_MASSIVE_DIVIDENDS = f"{INPUT_DIRECTORY}massive_dividends"
-PATH_MASSIVE_SPLITS = f"{INPUT_DIRECTORY}massive_splits"
-PATH_MASSIVE_UNADJUSTED_PRICES = f"{INPUT_DIRECTORY}massive_unadjusted_prices"
-PATH_YFINANCE_DIVIDENDS = f"{INPUT_DIRECTORY}yfinance_dividends"
-PATH_YFINANCE_PRICES = f"{INPUT_DIRECTORY}yfinance_prices"
-PATH_YFINANCE_SPLITS = f"{INPUT_DIRECTORY}yfinance_splits"
 
-# Output file paths
-_OUTPUT_DIRECTORY = "outputs/"
-PATH_AUDITED_ADJUSTED_OHLCV = f"{_OUTPUT_DIRECTORY}audited_adjusted_ohlcv"
-PATH_AUDITED_RETURNS = f"{_OUTPUT_DIRECTORY}audited_returns"
+def write_text_create_parent(output_path: str | Path, content: str) -> None:
+    """Write text to a file, creating the parent directory if needed.
+
+    Args:
+        output_path:
+            Text file path to write.
+
+        content:
+            Text content to write using the project encoding.
+    """
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding=ENCODING)
 
 
 def load_single_column_csv(file_path: str | Path) -> tuple[str, ...]:
-    """Load a single-column CSV file into a sorted tuple of strings.
+    """Load a single-column CSV file into a unique sorted tuple of strings.
 
     Notes:
         Ignores:
@@ -48,7 +46,7 @@ def load_single_column_csv(file_path: str | Path) -> tuple[str, ...]:
             Path to the CSV file.
 
     Returns:
-        Alphabetically sorted tuple of strings.
+        Alphabetically sorted tuple of unique strings.
     """
     values: list[str] = (
         pl.read_csv(file_path, has_header=False)
@@ -58,7 +56,7 @@ def load_single_column_csv(file_path: str | Path) -> tuple[str, ...]:
         .to_list()
     )
 
-    return tuple(sorted(values))
+    return tuple(sorted(set(values)))
 
 
 def normalize_ticker(ticker: str) -> str:

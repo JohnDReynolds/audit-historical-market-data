@@ -7,13 +7,8 @@ from pathlib import Path
 import polars as pl
 
 # Project imports.
-from audit_schema import (
-    CATEGORY_NON_ACTIONABLE,
-    CATEGORY_REPORT_COLUMNS,
-    DISPLAY_DECIMALS,
-    MAX_NEEDS_REVIEW_ROWS,
-)
 import audit_classification
+import audit_schema as schema
 import real_world_events
 
 
@@ -35,7 +30,7 @@ def category_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     review_required_expr: pl.Expr = audit_classification.review_required_expr()
 
     return audited_returns.filter(review_required_expr & pl.col("massive_needs_fix")).select(
-        CATEGORY_REPORT_COLUMNS
+        schema.CATEGORY_REPORT_COLUMNS
     )
 
 
@@ -43,9 +38,8 @@ def category_non_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     """Return informational/non-action rows using compact report columns.
 
     Category non-actionable contains review-required rows that do not appear to be
-    actionable Massive data defects based on the current deterministic
-    diagnostics, such as adjacent-day close reversals or yFinance event
-    return mismatches.
+    actionable Massive data defects after deterministic diagnostics and optional
+    real-world research have been applied.
 
     Args:
         audited_returns:
@@ -56,9 +50,9 @@ def category_non_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     """
     review_required_expr: pl.Expr = audit_classification.review_required_expr()
 
-    return audited_returns.filter(
-        review_required_expr & pl.col("analysis_reason_code").is_in(CATEGORY_NON_ACTIONABLE)
-    ).select(CATEGORY_REPORT_COLUMNS)
+    return audited_returns.filter(review_required_expr & ~pl.col("massive_needs_fix")).select(
+        schema.CATEGORY_REPORT_COLUMNS
+    )
 
 
 def collect_returns_output(df_lf: pl.LazyFrame) -> pl.DataFrame:
@@ -104,8 +98,8 @@ def collect_returns_output(df_lf: pl.LazyFrame) -> pl.DataFrame:
                 "diff_return",
                 "needs_review",
                 "review_priority",
-                # Heuristic audit score
-                "score",
+                # Heuristic anomaly score
+                "heuristic_anomaly_score",
                 # "diff_score",
                 # Deterministic analysis diagnostics
                 "analysis_sheet",
@@ -140,7 +134,7 @@ def write_returns_outputs(
             Path where the rounded full return-audit CSV should be written.
     """
     # Write to csv rounded to the nearest 0.01 basis point so it's easier to view.
-    rounded_df: pl.DataFrame = df.with_columns(pl.col(pl.Float64).round(DISPLAY_DECIMALS))
+    rounded_df: pl.DataFrame = df.with_columns(pl.col(pl.Float64).round(schema.DISPLAY_DECIMALS))
     rounded_df.write_csv(output_path)
     _write_needs_review_batches(rounded_df, output_path)
 
@@ -148,7 +142,7 @@ def write_returns_outputs(
 def _write_needs_review_batches(
     df: pl.DataFrame,
     output_path: Path,
-    max_needs_review_rows: int = MAX_NEEDS_REVIEW_ROWS,
+    max_needs_review_rows: int = schema.MAX_NEEDS_REVIEW_ROWS,
 ) -> None:
     """Write ticker-level review batches beside the full return-audit CSV.
 

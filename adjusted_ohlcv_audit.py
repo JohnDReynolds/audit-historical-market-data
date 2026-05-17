@@ -4,8 +4,8 @@
 import polars as pl
 
 # Project imports.
-from audit_schema import TOLERANCE_6 as _TOLERANCE_6
 from massive_data import MassiveData
+import audit_schema as schema
 import utilities as util
 
 
@@ -199,7 +199,7 @@ def audit_adjusted_ohlcv(
     )
 
     df: pl.DataFrame = (
-        long_audit_lf.filter(pl.col("pct_diff").abs() > _TOLERANCE_6)
+        long_audit_lf.filter(pl.col("pct_diff").abs() > schema.TOLERANCE_4)
         .select(
             [
                 "ticker",
@@ -216,6 +216,6 @@ def audit_adjusted_ohlcv(
     )
 
     # Persist audit output to disk.
-    df.write_csv(f"{util.PATH_AUDITED_ADJUSTED_OHLCV}.{from_date}.{to_date}.csv")
+    df.write_csv(f"{schema.PATH_AUDITED_ADJUSTED_OHLCV}.{from_date}.{to_date}.csv")
 
     return df

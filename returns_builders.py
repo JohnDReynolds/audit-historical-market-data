@@ -171,7 +171,7 @@ def build_massive_adjusted_returns_lf(
     close_lf: pl.LazyFrame,
     cumulative_factors_lf: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Build Massive adjusted closes, returns, diagnostics, and score.
+    """Build Massive adjusted closes, returns, diagnostics, and anomaly score.
 
     Args:
         close_lf:
@@ -182,7 +182,7 @@ def build_massive_adjusted_returns_lf(
 
     Returns:
         LazyFrame with Massive adjusted close, return components,
-        rolling diagnostics, and heuristic audit score.
+        rolling diagnostics, and heuristic anomaly score.
     """
     adjusted_lf: pl.LazyFrame = (
         close_lf.join(
@@ -287,7 +287,7 @@ def build_massive_adjusted_returns_lf(
             )
             .then(2)
             .otherwise(0)
-        ).alias("score")
+        ).alias("heuristic_anomaly_score")
     )
 
     return adjusted_lf

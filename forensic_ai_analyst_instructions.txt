@@ -49,6 +49,23 @@ Do NOT rely primarily on:
 - prior rows
 
 ==================================================
+INDEPENDENCE RULE
+==================================================
+
+Each input CSV file is a separate audit assignment.
+
+Do not use:
+- prior batch conclusions
+- prior ticker classifications
+- prior source selections
+- repeated event patterns
+
+as evidence for the current file.
+
+You may use the same source only if it is independently searched, opened,
+reviewed, and cited for the current row.
+
+==================================================
 VENDOR RULES
 ==================================================
 
@@ -86,21 +103,23 @@ The model MUST use BOTH.
 REQUIRED INVESTIGATION SEQUENCE
 ==================================================
 
-Investigate EXACTLY in this order:
+Investigate in this order, and do not classify a later category until earlier
+categories have been reasonably checked:
 
 1. Splits / reverse splits
 2. Cash distributions:
    - ordinary dividends
    - special dividends
    - return of capital
-3. Mergers / acquisitions / spin-offs
-4. Rights offerings
-5. Ticker changes / exchange notices
-6. Earnings announcements
-7. Guidance revisions
-8. Major company news
-9. Analyst actions
-10. Pricing-method explanations:
+3. Spin-offs / separations / Reverse Morris Trust transactions
+4. Mergers / acquisitions
+5. Rights offerings
+6. Ticker changes / exchange notices
+7. Earnings announcements
+8. Guidance revisions
+9. Major company news
+10. Analyst actions
+11. Pricing-method explanations:
     - adjusted-close normalization
     - stale closes
     - exchange corrections
@@ -116,12 +135,13 @@ EVENT PRECEDENCE RULES
 Apply classifications in EXACTLY this order:
 
 1. SPLIT
-2. DISTRIBUTION
-3. MERGER
-4. RIGHTS
-5. NEWS
-6. PRICING_METHOD
-7. UNKNOWN
+2. SPINOFF
+3. DISTRIBUTION
+4. MERGER
+5. RIGHTS
+6. NEWS
+7. PRICING_METHOD
+8. UNKNOWN
 
 The highest matching category wins.
 
@@ -169,6 +189,14 @@ Credible secondary sources:
 - Macrotrends
 - company press releases
 
+If sources conflict, prefer them in this order:
+
+1. SEC filings / exchange notices
+2. Company investor relations releases
+3. Official corporate-action announcements
+4. Major financial news sources
+5. Aggregators such as Yahoo Finance, Nasdaq, MarketWatch
+
 ==================================================
 MINIMUM RESEARCH REQUIREMENTS
 ==================================================
@@ -177,8 +205,11 @@ For EACH reviewed row:
 
 - at least 2 searches
 - at least 2 independent sources
-- at least 1 corporate-action source
-- at least 1 news source
+- attempt to review at least 1 corporate-action source
+- attempt to review at least 1 news source
+
+If a corporate-action source or news source is unavailable after reasonable
+searching, explicitly state that in evidence_summary.
 
 Do NOT stop research early merely because:
 - no split was found
@@ -305,8 +336,23 @@ TRUE when review is required.
 review_priority:
 HIGH / MEDIUM / LOW review priority.
 
-score:
+heuristic_anomaly_score:
 Massive heuristic anomaly score.
+
+This is a deterministic pre-research audit diagnostic generated from Massive
+return behavior. It helps explain why a row was selected for review, especially
+when the row was triggered by an unusual Massive return pattern rather than a
+material Massive/yFinance return difference.
+
+Do NOT use heuristic_anomaly_score by itself to assign likely_correct_source.
+Use it only as context. likely_correct_source must be determined from:
+- ms_return
+- yf_return
+- diff_return
+- event-return reconciliation
+- vendor event markers
+- adjustment-factor mechanics
+- external real-world evidence
 
 analysis_reason_code:
 Deterministic diagnostic classification.
@@ -439,6 +485,24 @@ If:
 
 Then:
 likely_correct_source should usually be MASSIVE.
+
+==================================================
+SPINOFF RECONCILIATION RULE
+==================================================
+
+Use SPINOFF when shareholders receive shares of a separated company or merger
+partner through a spin-off, separation, or Reverse Morris Trust transaction.
+
+If a vendor event marker explains the return difference, use that marker as the
+expected_return_impact.
+
+If no marker exists but distributed-share value can be estimated,
+expected_return_impact may approximate:
+
+distributed value / prior close
+
+Do NOT classify a spin-off as MERGER solely because the separated business
+immediately combines with another company.
 
 ==================================================
 CASH DISTRIBUTION RULE
@@ -593,6 +657,13 @@ Use UNCERTAIN only when:
 
 Do NOT use UNCERTAIN merely because direct vendor documentation is unavailable.
 
+When evidence is mixed, apply this tie-breaker order:
+
+1. Prefer the vendor whose event-return math reconciles to the confirmed event.
+2. If both reconcile and differences are immaterial, use BOTH.
+3. If neither reconciles to a confirmed event, use NEITHER.
+4. Use UNCERTAIN only when the event itself or vendor treatment cannot be determined.
+
 ==================================================
 OUTPUT SCHEMA
 ==================================================
@@ -619,6 +690,7 @@ UNCERTAIN
 event_bucket:
 DISTRIBUTION
 SPLIT
+SPINOFF
 MERGER
 RIGHTS
 NEWS
@@ -676,13 +748,13 @@ Evidence scoring:
 Confidence mapping:
 
 HIGH:
-score >= 8
+evidence score >= 8
 
 MEDIUM:
-score 4-7
+evidence score 4-7
 
 LOW:
-score <= 3
+evidence score <= 3
 
 ==================================================
 FINAL QUALITY CHECK
