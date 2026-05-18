@@ -29,6 +29,9 @@ def category_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     """
     review_required_expr: pl.Expr = audit_classification.review_required_expr()
 
+    # Actionable means the row both merits review and currently points to a
+    # Massive-side remediation candidate after deterministic diagnostics and
+    # optional real-world research have been applied.
     return audited_returns.filter(review_required_expr & pl.col("massive_needs_fix")).select(
         schema.CATEGORY_REPORT_COLUMNS
     )
@@ -50,6 +53,9 @@ def category_non_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     """
     review_required_expr: pl.Expr = audit_classification.review_required_expr()
 
+    # Non-actionable rows are still useful audit evidence: they document
+    # reconciled market moves, yFinance-side issues, close reversals, or review
+    # triggers that do not currently require a Massive data correction.
     return audited_returns.filter(review_required_expr & ~pl.col("massive_needs_fix")).select(
         schema.CATEGORY_REPORT_COLUMNS
     )
@@ -133,7 +139,9 @@ def write_returns_outputs(
         output_path:
             Path where the rounded full return-audit CSV should be written.
     """
-    # Write to csv rounded to the nearest 0.01 basis point so it's easier to view.
+    # Write display output rounded to the nearest 0.01 basis point. The in-memory
+    # DataFrame returned by audit_returns() keeps full precision for downstream
+    # calculations.
     rounded_df: pl.DataFrame = df.with_columns(pl.col(pl.Float64).round(schema.DISPLAY_DECIMALS))
     rounded_df.write_csv(output_path)
     _write_needs_review_batches(rounded_df, output_path)
@@ -188,6 +196,9 @@ def _write_needs_review_batches(
         if batch_prefix.isdigit():
             existing_batch_path.unlink()
 
+    # Batches are sized by review-row count but grouped by ticker. Keeping all
+    # rows for a ticker together preserves surrounding context for analyst
+    # research and avoids splitting related event sequences across files.
     review_ticker_counts: pl.DataFrame = (
         df.with_row_index("_audit_original_row")
         .group_by("ticker")

@@ -193,7 +193,13 @@ class Audit:
         # Return the df with all decimals.
         return df
 
-    def csv_audit_report(self, actionable: bool, output_path: str | None = None) -> str:
+    def csv_audit_report(
+        self,
+        actionable: bool,
+        output_path: str | None = None,
+        verbose: bool = False,
+        exclude_columns: Sequence[str] | None = None,
+    ) -> str:
         """Create a CSV audit report from audit results.
 
         Args:
@@ -203,17 +209,27 @@ class Audit:
             output_path:
                 Optional path where the CSV audit report should be written.
 
+            verbose:
+                Whether to print the written output path.
+
+            exclude_columns:
+                Optional list of output columns to omit if present.
+
         Returns:
             CSV audit report text.
         """
         # df = self._category_actionable() if actionable else self._category_non_actionable()
         csv_string = io.StringIO()
         df = self._actionable_or_non_actionable(actionable)
+        if exclude_columns is not None:
+            df = df.drop([column for column in exclude_columns if column in df.columns])
         df.with_columns(pl.col(pl.Float64).round(schema.DISPLAY_DECIMALS)).write_csv(csv_string)
         content = csv_string.getvalue()
 
         if output_path:
             util.write_text_create_parent(output_path, content)
+            if verbose:
+                print(f"Wrote {output_path}")
 
         return content
 
@@ -245,6 +261,7 @@ class Audit:
         actionable: bool,
         summary: bool = False,
         output_path: str | None = None,
+        verbose: bool = False,
     ) -> str:
         """Create an HTML audit report from a DataFrame.
 
@@ -259,6 +276,9 @@ class Audit:
             output_path:
                 Optional path where the HTML audit report should be written.
 
+            verbose:
+                Whether to print the written output path.
+
         Returns:
             HTML audit report text.
         """
@@ -267,6 +287,90 @@ class Audit:
             if actionable
             else audit_outputs.category_non_actionable(self.audited_returns)
         )
+
+        if summary:
+            def joined_text_expr(column_names: Sequence[str]) -> pl.Expr:
+                """Join nonblank text columns with a blank line for summary reports."""
+                return pl.struct(
+                    [pl.col(column_name).fill_null("").cast(pl.Utf8) for column_name in column_names]
+                ).map_elements(
+                    lambda values: "\n\n".join(
+                        value.strip()
+                        for value in values.values()
+                        if isinstance(value, str) and value.strip()
+                    ),
+                    return_dtype=pl.String,
+                )
+
+            massive_problem_and_fix_column = "massive_problem_and_fix"
+            massive_guidance_columns = [
+                "massive_problem_summary",
+                "massive_why_incorrect",
+                "massive_fix_action",
+            ]
+            has_massive_problem_and_fix = all(
+                column_name in raw_df.columns for column_name in massive_guidance_columns
+            )
+            if has_massive_problem_and_fix:
+                raw_df = raw_df.with_columns(
+                    joined_text_expr(massive_guidance_columns).alias(
+                        massive_problem_and_fix_column
+                    )
+                )
+
+            real_world_evidence_column = "real_world_evidence"
+            real_world_evidence_columns = [
+                "real_world_event",
+                "evidence_summary",
+            ]
+            has_real_world_evidence = all(
+                column_name in raw_df.columns for column_name in real_world_evidence_columns
+            )
+            if has_real_world_evidence:
+                raw_df = raw_df.with_columns(
+                    joined_text_expr(real_world_evidence_columns).alias(real_world_evidence_column)
+                )
+
+            summary_omitted_columns = {
+                "likely_correct_source",
+                "confidence_level",
+                "primary_source_url",
+                "secondary_source_url",
+                "analysis_reason_code",
+                "expected_return_impact",
+                "evidence_summary",
+                "real_world_event",
+                "massive_problem_summary",
+                "massive_why_incorrect",
+                "massive_fix_action",
+                "ms_return",
+                "yf_return",
+                "diff_return",
+                "heuristic_anomaly_score",
+            }
+            summary_appended_columns = [
+                "ms_return",
+                "yf_return",
+            ]
+            kept_columns: list[str] = []
+            for column_name in raw_df.columns:
+                if column_name == "expected_return_impact" and "analysis_reason_code" in raw_df.columns:
+                    kept_columns.append("analysis_reason_code")
+                if column_name == "evidence_summary" and has_real_world_evidence:
+                    kept_columns.append(real_world_evidence_column)
+                if column_name == "massive_problem_summary":
+                    if has_massive_problem_and_fix:
+                        kept_columns.append(massive_problem_and_fix_column)
+                if column_name not in summary_omitted_columns | {
+                    massive_problem_and_fix_column,
+                    real_world_evidence_column,
+                }:
+                    kept_columns.append(column_name)
+            kept_columns.extend(
+                column_name for column_name in summary_appended_columns if column_name in raw_df.columns
+            )
+            raw_df = raw_df.select(kept_columns)
+
         display_column_names = self._display_column_names(raw_df.columns)
         display_to_raw_column_names = {
             display_column_name: raw_column_name
@@ -274,60 +378,9 @@ class Audit:
         }
         df = raw_df.rename(display_column_names)
 
-        if summary:
-            massive_problem_and_fix_column = "massive problem and fix"
-            massive_guidance_columns = [
-                "massive problem summary",
-                "massive why incorrect",
-                "massive fix action",
-            ]
-            has_massive_problem_and_fix = all(
-                column_name in df.columns for column_name in massive_guidance_columns
-            )
-            if has_massive_problem_and_fix:
-                df = df.with_columns(
-                    pl.concat_str(
-                        [
-                            pl.col(column_name).fill_null("")
-                            for column_name in massive_guidance_columns
-                        ],
-                        separator="\n\n",
-                    ).alias(massive_problem_and_fix_column)
-                )
-
-            summary_omitted_columns = {
-                "likely correct source",
-                "confidence level",
-                "primary source url",
-                "secondary source url",
-                "analysis reason code",
-                "massive problem summary",
-                "massive why incorrect",
-                "massive fix action",
-                "Massive ms_return",
-                "yFinance yf_return",
-                "diff return",
-                "heuristic anomaly score",
-            }
-            summary_appended_columns = [
-                "Massive ms_return",
-                "yFinance yf_return",
-            ]
-            kept_columns: list[str] = []
-            for column_name in df.columns:
-                if column_name == "massive problem summary" and has_massive_problem_and_fix:
-                    kept_columns.append(massive_problem_and_fix_column)
-                if column_name not in summary_omitted_columns | {massive_problem_and_fix_column}:
-                    kept_columns.append(column_name)
-            kept_columns.extend(
-                column_name
-                for column_name in summary_appended_columns
-                if column_name in df.columns
-            )
-            df = df.select(kept_columns)
-
         narrative_columns = {
             "evidence summary",
+            "real world evidence",
             "real world event",
             "massive problem summary",
             "massive why incorrect",
@@ -389,7 +442,7 @@ class Audit:
                 return "pdf-col-ticker"
             if fieldname == "date":
                 return "pdf-col-date"
-            if fieldname == "evidence summary":
+            if fieldname in {"evidence summary", "real world evidence"}:
                 return "pdf-col-evidence-summary"
             if fieldname == "massive problem and fix":
                 return "pdf-col-problem-fix"
@@ -419,7 +472,7 @@ class Audit:
             }:
                 return "pdf-col-summary-return"
             if fieldname == "analysis reason code":
-                return "pdf-col-reason"
+                return "pdf-col-event"
             if normalized_fieldname.endswith("div_split"):
                 return "pdf-col-marker"
             if "return" in normalized_fieldname or fieldname == "heuristic anomaly score":
@@ -535,6 +588,8 @@ class Audit:
 
         if output_path:
             util.write_text_create_parent(output_path, content)
+            if verbose:
+                print(f"Wrote {output_path}")
 
         return content
 
@@ -543,6 +598,7 @@ class Audit:
         output_path: str,
         actionable: bool = True,
         summary: bool = False,
+        verbose: bool = False,
     ) -> None:
         """Create a ledger landscape PDF audit report.
 
@@ -555,6 +611,9 @@ class Audit:
 
             summary:
                 Whether to omit detail columns and increase the PDF font size.
+
+            verbose:
+                Whether to print the written output path.
 
         Raises:
             RuntimeError:
@@ -585,9 +644,9 @@ class Audit:
             pdf_event_bucket_width = "1.195425in"
             pdf_impact_width = "0.77in"
             pdf_summary_return_width = "0.847in"
-            pdf_evidence_width = "3.3959615in"
-            pdf_problem_fix_width = "2.8196135in"
-            pdf_event_width = "1.585in"
+            pdf_evidence_width = "3.67792285in"
+            pdf_problem_fix_width = "2.53765215in"
+            pdf_event_width = "2.355in"
             pdf_guidance_width = "1.25in"
             pdf_marker_width = "1.155in"
             pdf_url_width = "0.95in"
@@ -769,6 +828,8 @@ class Audit:
                     prefer_css_page_size=True,
                 )
                 browser.close()
+            if verbose:
+                print(f"Wrote {output_path}")
         except PlaywrightError as exc:
             raise RuntimeError(
                 "Failed to create PDF report with Playwright. If Chromium is missing, "
@@ -822,8 +883,9 @@ class Audit:
             "font-size:32px;line-height:1.15;font-weight:750}",
             ".entry{break-inside:avoid;margin:0 0 22px;padding:0 0 18px;"
             "border-bottom:1px solid #dbe3ef}",
+            ".entry-breakable{break-inside:auto}",
             ".key{margin:0 0 7px;color:#1e3a8a;font-size:17px;font-weight:720}",
-            ".description{margin:0;color:#111827}",
+            ".description{margin:0;color:#111827;white-space:pre-wrap}",
             "</style>",
             "</head>",
             "<body>",
@@ -831,9 +893,10 @@ class Audit:
         ]
 
         for key, description in dictionary_items:
+            entry_class = "entry entry-breakable" if key == "analysis_reason_code" else "entry"
             html_parts.extend(
                 [
-                    '<section class="entry">',
+                    f'<section class="{entry_class}">',
                     f'<h2 class="key">{escape(key)}</h2>',
                     f'<p class="description">{escape(description)}</p>',
                     "</section>",

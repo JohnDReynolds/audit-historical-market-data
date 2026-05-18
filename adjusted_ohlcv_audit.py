@@ -93,7 +93,9 @@ def audit_adjusted_ohlcv(
         "splits CSV",
     )
 
-    # Convert split rows into price adjustment factors.
+    # Convert split rows into price adjustment factors. This audit checks only
+    # split-adjusted OHLCV because Massive's adjusted aggregate endpoint does
+    # not include cash-dividend total-return adjustment.
     #
     # For a 2-for-1 split:
     # - split_from = 1
@@ -132,7 +134,8 @@ def audit_adjusted_ohlcv(
         how="left",
     ).with_columns(pl.col("adj_factor").fill_null(1.0))
 
-    # Price fields are adjusted by multiplying by the split price factor.
+    # Price fields move with the split price factor: after a 2-for-1 split,
+    # pre-split prices are halved in the adjusted history.
     for column_name in price_columns:
         manual_lf = manual_lf.with_columns(
             (pl.col(column_name).cast(pl.Float64) * pl.col("adj_factor")).alias(
@@ -140,7 +143,8 @@ def audit_adjusted_ohlcv(
             )
         )
 
-    # Volume fields move inversely to price adjustment factors.
+    # Volume fields move inversely to price adjustment factors: after a
+    # 2-for-1 split, historical volume is doubled.
     for column_name in volume_columns:
         manual_lf = manual_lf.with_columns(
             (pl.col(column_name).cast(pl.Float64) / pl.col("adj_factor")).alias(
@@ -188,7 +192,9 @@ def audit_adjusted_ohlcv(
             )
         )
 
-    # Compute percentage difference instead of absolute difference.
+    # Percentage difference is scale-independent, so a one-cent mismatch in a
+    # low-priced security is treated as more important than a one-cent mismatch
+    # in a high-priced security.
     long_audit_lf: pl.LazyFrame = pl.concat(long_frames).with_columns(
         pl.when((pl.col("expected") == 0.0) & (pl.col("adjusted") == 0.0))
         .then(0.0)

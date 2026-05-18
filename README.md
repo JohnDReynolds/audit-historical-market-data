@@ -1,8 +1,20 @@
 # Massive Market Data Audit
 
-This project audits Massive market data using a combination of independent Massive-side consistency checks, heuristic anomaly detection, and comparison against independently downloaded yFinance data. It focuses on adjusted OHLCV values, dividends, splits, adjusted returns, and real-world corporate-action explanations for unusual or discrepant return behavior.
+This project audits Massive.com market data using a combination of independent Massive-side consistency checks, heuristic anomaly
+detection, and comparison against an independent vendor (e.g. yFinance).  It focuses on adjusted OHLCV values, dividends, splits,
+adjusted returns, and real-world event explanations for unusual or discrepant return behavior.
 
-The code is designed for investment-performance audit workflows where a row should not merely be flagged, but reconciled: what happened in the real world, which vendor treatment is economically correct, and whether Massive appears to need a data or adjustment-method fix.
+The code is designed for investment-performance audit workflows where a discrepant value should not merely be flagged, but
+reconciled: what happened in the real world, which vendor treatment is economically correct, and whether Massive appears to need
+a data or adjustment-method fix.
+
+The optional real-world research workflow is designed to be performed with a specialized OpenAI-assisted forensic analyst process.
+
+## Sample Output
+
+- [Actionable findings PDF](outputs/actionable.2021-05-16.2026-05-16.pdf)
+- [Non-actionable findings PDF](outputs/non_actionable.2021-05-16.2026-05-16.pdf)
+- [Data Dictionary](outputs/data_dictionary.pdf)
 
 ## Functional Overview
 
@@ -65,9 +77,19 @@ audit = Audit(
     to_date="2026-05-16",
 )
 
-audit.csv_audit_report(actionable=True, output_path="outputs/actionable.csv")
-audit.html_audit_report(actionable=True, output_path="outputs/actionable.html")
-audit.pdf_audit_report(actionable=True, summary=True, output_path="outputs/actionable.pdf")
+audit.csv_audit_report(
+    actionable=True,
+    output_path="outputs/actionable.2021-05-16.2026-05-16.csv",
+)
+audit.html_audit_report(
+    actionable=True,
+    output_path="outputs/actionable.2021-05-16.2026-05-16.html",
+)
+audit.pdf_audit_report(
+    actionable=True,
+    summary=True,
+    output_path="outputs/actionable.2021-05-16.2026-05-16.pdf",
+)
 ```
 
 ### Data Access
@@ -256,26 +278,29 @@ Massive access requires:
 MASSIVE_API_KEY=<your key>
 ```
 
-The code loads this from `.env`.
+The code loads this from `.env`. The key is required when importing the Massive data wrapper, even if the current run reuses cached input CSVs.
 
 ## Dependencies
 
-The code imports:
+Install Python dependencies with:
 
-- `polars`
-- `pandas`
-- `python-dotenv`
-- `massive`
-- `yfinance`
-- `playwright` for PDF reports
+```bash
+python -m pip install -r requirements.txt
+```
 
-Playwright PDF generation also requires Chromium:
+The main packages are:
+
+- `polars` for lazy dataframe processing
+- `pandas` and `yfinance` for yFinance downloads
+- `massive` for Massive.com API access
+- `python-dotenv` for loading `MASSIVE_API_KEY` from `.env`
+- `playwright` for HTML-to-PDF report generation
+
+PDF generation also requires Playwright's Chromium browser:
 
 ```bash
 python -m playwright install chromium
 ```
-
-There is not currently a committed dependency lockfile or requirements file.
 
 ## Notes on Vendor Semantics
 
@@ -306,3 +331,11 @@ sp:1.048 -> expected_return_impact = 0.048
 Downloaded input CSVs and generated outputs can be large and date-specific. Treat them as reproducible artifacts unless you intentionally want to preserve a specific audit run.
 
 The source CSV cache behavior is controlled by the `always_download` flag passed to `Audit`.
+
+## License
+
+Copyright (c) 2026 John D Reynolds. All rights reserved.
+
+This project is proprietary. No permission is granted to use, copy, modify,
+distribute, sublicense, or create derivative works without prior written
+permission.

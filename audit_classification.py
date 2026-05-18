@@ -34,10 +34,14 @@ def add_analysis_labels(
         "YF_DIV_SPLIT_RETURN_MISMATCH",
     ]
     medium_confidence_reason_codes: list[str] = [
-        "MS_MISSING_EVENT_ADJUSTMENT",
+        "MS_MISSING_EVENT",
         "MS_EVENT_DATE_MISMATCH",
+        "MS_PARTIAL_EVENT",
+        "MS_EXTRA_EVENT",
         "MS_ADJ_FACTOR_CONTINUITY",
         "MS_DIV_SPLIT_RETURN_MISMATCH",
+        "EVENT_RETURN_BASIS_MISMATCH",
+        "EVENT_SOURCE_MISMATCH",
         "HIGH_SCORE_ANOMALY",
     ]
 
@@ -45,10 +49,10 @@ def add_analysis_labels(
         yfinance_reason_codes.extend(
             [
                 "YF_EVENT_DATE_MISMATCH",
-                "YF_MISSING_REAL_WORLD_EVENT",
+                "YF_MISSING_EVENT",
             ]
         )
-        medium_confidence_reason_codes.append("YF_MISSING_REAL_WORLD_EVENT")
+        medium_confidence_reason_codes.append("YF_MISSING_EVENT")
 
     return cast(
         _FrameT,
@@ -95,6 +99,9 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
     """
     # review_required_expr: pl.Expr = review_required_expr()
 
+    # The order is part of the business logic. More specific, mechanically
+    # explainable conditions are assigned before broader fallbacks so the output
+    # points reviewers toward the most likely reconciliation path.
     return df_lf.with_columns(
         pl.when(~review_required_expr())
         .then(pl.lit(""))
@@ -108,17 +115,33 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
         .when(pl.col("is_close_reversal"))
         .then(pl.lit("CLOSE_REVERSAL"))
         .when(pl.col("is_ms_missing_event_adjustment"))
-        .then(pl.lit("MS_MISSING_EVENT_ADJUSTMENT"))
+        .then(pl.lit("MS_MISSING_EVENT"))
         .when(
             pl.col("is_yf_div_split_return_mismatch") & ~pl.col("is_ms_div_split_return_mismatch")
         )
         .then(pl.lit("YF_DIV_SPLIT_RETURN_MISMATCH"))
+        .when(
+            pl.col("has_div_split_mismatch")
+            & pl.col("has_ms_event")
+            & pl.col("has_yf_event")
+            # If both vendors carry same-day event markers and the residual
+            # return gap is tiny, the best pre-research explanation is usually
+            # event representation, not a broken adjustment chain.
+            & (pl.col("diff_return").abs() <= schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE)
+        )
+        .then(pl.lit("EVENT_SOURCE_MISMATCH"))
+        .when(pl.col("is_event_return_basis_mismatch"))
+        .then(pl.lit("EVENT_RETURN_BASIS_MISMATCH"))
+        .when(pl.col("is_ms_partial_event"))
+        .then(pl.lit("MS_PARTIAL_EVENT"))
+        .when(pl.col("is_ms_extra_event"))
+        .then(pl.lit("MS_EXTRA_EVENT"))
         .when(pl.col("is_adj_factor_mismatch"))
         .then(pl.lit("MS_ADJ_FACTOR_CONTINUITY"))
         .when(pl.col("is_ms_div_split_return_mismatch"))
         .then(pl.lit("MS_DIV_SPLIT_RETURN_MISMATCH"))
         .when(pl.col("has_div_split_mismatch"))
-        .then(pl.lit("MS_EVENT_SOURCE_MISMATCH"))
+        .then(pl.lit("EVENT_SOURCE_MISMATCH"))
         .otherwise(pl.lit("MS_RETURN_METHOD_UNRESOLVED"))
         .alias("analysis_reason_code")
     )
@@ -158,6 +181,13 @@ def add_massive_fix_guidance(
     research_says_massive_incorrect: pl.Expr = pl.col("likely_correct_source").is_in(
         ["YFINANCE", "NEITHER"]
     )
+    close_reversal_supports_massive_fix: pl.Expr = (
+        (pl.col("analysis_reason_code") == "CLOSE_REVERSAL") & research_says_massive_incorrect
+    )
+    # Real-world research has higher authority than deterministic pre-research
+    # suspicion. If research says Massive is correct or economically equivalent,
+    # clear Massive remediation; if research says yFinance or neither source is
+    # correct, keep/remap the row as a Massive fix candidate.
     research_aware_massive_needs_fix_expr: pl.Expr = (
         pl.when(research_says_massive_correct)
         .then(pl.lit(False))
@@ -172,7 +202,13 @@ def add_massive_fix_guidance(
             research_aware_massive_needs_fix_expr.alias("massive_needs_fix"),
             pl.when(research_says_massive_correct)
             .then(pl.lit(""))
-            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
+            .when(close_reversal_supports_massive_fix)
+            .then(
+                pl.lit(
+                    "Massive close appears incorrect after an adjacent-day close reversal."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT")
             .then(
                 pl.lit(
                     "Massive is missing the event/adjustment needed to explain the return "
@@ -184,6 +220,19 @@ def add_massive_fix_guidance(
                 pl.lit(
                     "Massive appears to have the correct event amount on the wrong trading "
                     "date."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_PARTIAL_EVENT")
+            .then(
+                pl.lit(
+                    "Massive records a corporate-action event, but the event amount appears "
+                    "incomplete."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_EXTRA_EVENT")
+            .then(
+                pl.lit(
+                    "Massive records an extra corporate-action event or excessive event amount."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
@@ -200,11 +249,18 @@ def add_massive_fix_guidance(
                     "dividend/split event return."
                 )
             )
-            .when(pl.col("analysis_reason_code") == "MS_EVENT_SOURCE_MISMATCH")
+            .when(pl.col("analysis_reason_code") == "EVENT_SOURCE_MISMATCH")
             .then(
                 pl.lit(
                     "Massive and yFinance report different dividend/split event data for the "
                     "date."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "EVENT_RETURN_BASIS_MISMATCH")
+            .then(
+                pl.lit(
+                    "Massive and yFinance record the same dividend/split event, but calculate "
+                    "different event-return percentages."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_RETURN_METHOD_UNRESOLVED")
@@ -225,7 +281,15 @@ def add_massive_fix_guidance(
             .alias("massive_problem_summary"),
             pl.when(research_says_massive_correct)
             .then(pl.lit(""))
-            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
+            .when(close_reversal_supports_massive_fix)
+            .then(
+                pl.lit(
+                    "Massive appears incorrect because independent evidence supports the "
+                    "comparison source's close, and the return difference reverses across "
+                    "adjacent trading days."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT")
             .then(
                 pl.lit(
                     "Massive appears incorrect because the comparison source and real-world "
@@ -238,6 +302,22 @@ def add_massive_fix_guidance(
                     "Massive appears incorrect because the real-world event date and "
                     "return math indicate the event should be recognized on a different "
                     "trading date."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_PARTIAL_EVENT")
+            .then(
+                pl.lit(
+                    "Massive appears incorrect because it captured only part of the "
+                    "same-day corporate-action event, and the missing event-return piece "
+                    "explains the Massive/yFinance return difference."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_EXTRA_EVENT")
+            .then(
+                pl.lit(
+                    "Massive appears incorrect because it captured an extra same-day "
+                    "corporate-action event or event amount, and the excess event-return "
+                    "piece explains the Massive/yFinance return difference."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
@@ -255,17 +335,25 @@ def add_massive_fix_guidance(
                     "not match the explicit Massive dividend/split event return."
                 )
             )
-            .when(pl.col("analysis_reason_code") == "MS_EVENT_SOURCE_MISMATCH")
+            .when(pl.col("analysis_reason_code") == "EVENT_SOURCE_MISMATCH")
             .then(
                 pl.lit(
-                    "Massive may be incorrect because its dividend/split event data differs "
-                    "from the comparison source."
+                    "Massive and yFinance disagree on dividend/split event data, but the "
+                    "pre-research fields do not determine which source is economically correct."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "EVENT_RETURN_BASIS_MISMATCH")
+            .then(
+                pl.lit(
+                    "The vendors appear to apply the same event amount to different historical "
+                    "price or adjustment bases, so the row needs methodology review rather than "
+                    "a presumptive Massive correction."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_RETURN_METHOD_UNRESOLVED")
             .then(
                 pl.lit(
-                    "Massive may be incorrect, but the CSV fields do not provide enough "
+                    "Massive may be incorrect, but the input fields do not provide enough "
                     "deterministic evidence to assign a more specific defect type."
                 )
             )
@@ -281,7 +369,14 @@ def add_massive_fix_guidance(
             .alias("massive_why_incorrect"),
             pl.when(research_says_massive_correct)
             .then(pl.lit(""))
-            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT_ADJUSTMENT")
+            .when(close_reversal_supports_massive_fix)
+            .then(
+                pl.lit(
+                    "Review and correct the Massive close for the affected date, then rebuild "
+                    "the adjusted close and adjusted return chain."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT")
             .then(
                 pl.lit(
                     "Add or correct the missing Massive dividend/split event, apply the "
@@ -294,6 +389,20 @@ def add_massive_fix_guidance(
                 pl.lit(
                     "Move the Massive dividend/split event to the externally confirmed "
                     "event date, remove the misstated adjacent-date event if present, and "
+                    "rebuild the adjusted close and adjusted return chain."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_PARTIAL_EVENT")
+            .then(
+                pl.lit(
+                    "Correct the Massive event amount to include the full corporate-action "
+                    "distribution, then rebuild the adjusted close and adjusted return chain."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "MS_EXTRA_EVENT")
+            .then(
+                pl.lit(
+                    "Remove the unsupported Massive event amount or duplicate event, then "
                     "rebuild the adjusted close and adjusted return chain."
                 )
             )
@@ -313,12 +422,20 @@ def add_massive_fix_guidance(
                     "the explicit event return."
                 )
             )
-            .when(pl.col("analysis_reason_code") == "MS_EVENT_SOURCE_MISMATCH")
+            .when(pl.col("analysis_reason_code") == "EVENT_SOURCE_MISMATCH")
             .then(
                 pl.lit(
                     "Compare Massive event records against a trusted corporate-action source; "
                     "correct missing, extra, or misstated events and rerun the return "
                     "calculation."
+                )
+            )
+            .when(pl.col("analysis_reason_code") == "EVENT_RETURN_BASIS_MISMATCH")
+            .then(
+                pl.lit(
+                    "Review the vendors' historical price and adjustment bases for this event; "
+                    "do not treat the row as a Massive event defect unless external evidence "
+                    "shows Massive used the wrong basis."
                 )
             )
             .when(pl.col("analysis_reason_code") == "MS_RETURN_METHOD_UNRESOLVED")
@@ -338,8 +455,9 @@ def add_massive_fix_guidance(
             )
             .otherwise(pl.lit(""))
             .alias("massive_fix_action"),
-            _massive_fix_priority_expr(research_aware_massive_needs_fix_expr)
-            .alias("massive_fix_priority"),
+            _massive_fix_priority_expr(research_aware_massive_needs_fix_expr).alias(
+                "massive_fix_priority"
+            ),
         ),
     )
 
@@ -401,13 +519,17 @@ def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
 
     df = add_massive_fix_guidance(
         df,
+        # After research, generic EVENT_SOURCE_MISMATCH is not enough by itself
+        # to say Massive needs a fix. It must have been converted to a
+        # Massive-focused reason code or supported by likely_correct_source.
         pl.col("analysis_reason_code").is_in(
-            [
-                "MS_MISSING_EVENT_ADJUSTMENT",
-                "MS_EVENT_DATE_MISMATCH",
-                "MS_ADJ_FACTOR_CONTINUITY",
-                "MS_DIV_SPLIT_RETURN_MISMATCH",
-                "MS_EVENT_SOURCE_MISMATCH",
+                [
+                    "MS_MISSING_EVENT",
+                    "MS_EVENT_DATE_MISMATCH",
+                    "MS_PARTIAL_EVENT",
+                    "MS_EXTRA_EVENT",
+                    "MS_ADJ_FACTOR_CONTINUITY",
+                    "MS_DIV_SPLIT_RETURN_MISMATCH",
                 "MS_RETURN_METHOD_UNRESOLVED",
                 "HIGH_SCORE_ANOMALY",
             ]
@@ -435,11 +557,7 @@ def _massive_fix_priority_expr(massive_needs_fix_expr: pl.Expr) -> pl.Expr:
     Returns:
         Polars expression that assigns the Massive fix priority bucket.
     """
-    return (
-        pl.when(massive_needs_fix_expr)
-        .then(_triage_priority_expr())
-        .otherwise(pl.lit(""))
-    )
+    return pl.when(massive_needs_fix_expr).then(_triage_priority_expr()).otherwise(pl.lit(""))
 
 
 def _triage_priority_expr() -> pl.Expr:
@@ -448,6 +566,9 @@ def _triage_priority_expr() -> pl.Expr:
     Returns:
         Polars expression that assigns a HIGH, MEDIUM, LOW, or blank priority.
     """
+    # A material Massive/yFinance return difference is always HIGH. Heuristic
+    # anomaly rows are lower priority because they may be real market moves even
+    # when both sources agree.
     # A heuristic anomaly score >= 8 is particularly suspicious.
     is_high_score = pl.col("heuristic_anomaly_score") >= 8
 

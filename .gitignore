@@ -1,9 +1,12 @@
 # My Stuff
 .~lock.*
 _*
-inputs/
-junk_*
-outputs/
+inputs/*.csv
+junk*
+outputs/*.csv
+outputs/*.test
+outputs/*.researched
+outputs/*.verified
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

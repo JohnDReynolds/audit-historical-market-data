@@ -1,0 +1,6 @@
+massive
+pandas
+playwright
+polars
+python-dotenv
+yfinance

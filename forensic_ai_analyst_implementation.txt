@@ -24,7 +24,7 @@ You must process exactly one input CSV file at a time.
 
 For each input CSV file:
 1. Open/read only that input file.
-2. Identify rows where needs_review == TRUE.
+2. Identify rows where needs_review == true.
 3. Perform all required research for only those rows.
 4. Write that file's .researched output.
 5. Validate that output file.

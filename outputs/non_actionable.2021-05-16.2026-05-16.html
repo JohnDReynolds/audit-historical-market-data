@@ -1,0 +1,2514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Non-Actionable Audit Report</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:24px;color:#1f2937;background:#f8fafc}
+.title{display:flex;align-items:baseline;gap:10px;margin:0 0 16px}
+.title-main{font-size:22px;font-weight:700;color:#1e3a8a}
+.title-path{font-size:13px;color:#64748b}
+.table-wrap{max-height:calc(100vh - 96px);overflow:auto;border:1px solid #cbd5e1;background:white}
+table{border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.35}
+th,td{border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:6px 8px;vertical-align:top}
+th{position:sticky;top:0;background:#e5e7eb;z-index:2;font-weight:650;white-space:normal}
+td{white-space:nowrap}
+.frozen-col{position:sticky;background:white;z-index:1}
+th.frozen-col{background:#e5e7eb;z-index:3}
+.frozen-ticker{left:0;min-width:72px}
+.frozen-date{left:88px;min-width:96px}
+.wrap{white-space:pre-wrap;min-width:260px;max-width:460px}
+.url{white-space:normal;min-width:220px;max-width:360px;word-break:break-word}
+.priority-HIGH{background:#fee2e2}
+.priority-MEDIUM{background:#fef3c7}
+.priority-LOW{background:#dcfce7}
+.status-YES,.status-YFINANCE,.status-MASSIVE{background:#dbeafe}
+.status-NO,.status-BOTH{background:#dcfce7}
+.status-UNCERTAIN,.status-NEITHER{background:#fef3c7}
+.status-HIGH{background:#dcfce7}
+.status-MEDIUM{background:#fef3c7}
+.status-LOW{background:#fee2e2}
+a{color:#1d4ed8}
+</style>
+</head>
+<body>
+<h1 class="title">
+<span class="title-main">Non-Actionable Audit Report</span>
+</h1>
+<div class="table-wrap">
+<table>
+<colgroup>
+<col class="pdf-col-ticker">
+<col class="pdf-col-date">
+<col class="pdf-col-fix-priority">
+<col class="pdf-col-status">
+<col class="pdf-col-status">
+<col class="pdf-col-event-bucket">
+<col class="pdf-col-impact">
+<col class="pdf-col-evidence-summary">
+<col class="pdf-col-event">
+<col class="pdf-col-guidance">
+<col class="pdf-col-guidance">
+<col class="pdf-col-guidance">
+<col class="pdf-col-url">
+<col class="pdf-col-url">
+<col class="pdf-col-event">
+<col class="pdf-col-marker">
+<col class="pdf-col-marker">
+<col class="pdf-col-summary-return">
+<col class="pdf-col-summary-return">
+<col class="pdf-col-number">
+<col class="pdf-col-number">
+</colgroup>
+<thead><tr>
+<th class="frozen-col frozen-ticker" title="Normalized ticker symbol being audited. The pipeline strips surrounding whitespace and uppercases ticker symbols before joining Massive and yFinance data.">ticker</th>
+<th class="frozen-col frozen-date" title="Trading date being reconciled. This is the date of the Massive row and the date used to join yFinance prices, dividend/split event markers, return calculations, diagnostics, and optional real-world event research.">date</th>
+<th title="Priority for the suggested Massive remediation. This is research-aware: it is blank when real-world research concludes likely_correct_source is MASSIVE or BOTH.
+
+Possible values, alphabetically:
+o Blank = no Massive remediation priority is assigned.
+o HIGH = direct Massive fix candidate, such as missing event adjustment, event-date mismatch, adjustment-factor continuity, or Massive dividend/split return mismatch.
+o LOW = low-priority Massive review, usually lower-score heuristic anomaly.
+o MEDIUM = more investigative Massive review, such as an unresolved return method issue or higher-score anomaly.">massive fix priority</th>
+<th title="External research conclusion identifying which source appears economically correct after considering both real-world evidence and input row math. The analyst instructions require this to follow from ms_return, yf_return, diff_return, event markers, event-return fields, adjustment factors, and external evidence.
+
+Possible values, alphabetically:
+o Blank = no external real-world event research was joined.
+o BOTH = Massive and yFinance are economically equivalent or both appear reasonable for the row.
+o MASSIVE = Massive appears economically correct.
+o NEITHER = neither Massive nor yFinance appears economically correct.
+o UNCERTAIN = research cannot determine the likely correct source.
+o YFINANCE = yFinance appears economically correct.">likely correct source</th>
+<th title="External research confidence label for the likely_correct_source and event conclusion. This is separate from analysis_confidence: confidence_level comes from the analyst/research evidence scoring rules, while analysis_confidence is the deterministic pipeline&#x27;s pre-research label.
+
+Possible values, alphabetically:
+o Blank = no external real-world event research was joined.
+o HIGH = strong source support and clear return/event reconciliation.
+o LOW = weak, ambiguous, or absence-of-event support.
+o MEDIUM = reasonable but incomplete or partly inferential support.">confidence level</th>
+<th title="External research classification for the identified real-world explanation. 
+
+Possible values, alphabetically:
+o DISTRIBUTION = cash dividend, special dividend, return of capital, or similar cash/non-split distribution.
+o MERGER = merger, acquisition, exchange offer, or transaction consideration affecting the price/return series.
+o NEWS = material company, industry, macro, earnings, guidance, regulatory, litigation, or analyst/news event rather than a mechanical corporate action.
+o PRICING_METHOD = a non-corporate-action difference caused by different vendor price, adjustment, or timing methods, after corporate actions and material news have been investigated.
+o RIGHTS = rights offering, warrant distribution, subscription right, or similar shareholder right.
+o SPINOFF = spin-off, split-off, or separation distribution.
+o SPLIT = stock split, reverse split, or stock dividend treated as a split factor.
+o UNKNOWN = no sufficiently supported real-world explanation was identified.
+
+The analyst instructions require event precedence in this order: SPLIT, SPINOFF, DISTRIBUTION, MERGER, RIGHTS, NEWS, PRICING_METHOD, UNKNOWN.">event bucket</th>
+<th title="External research estimate of the event&#x27;s expected return impact using the audit&#x27;s event-return convention. For splits, the instructions define this as split_factor - 1.0. For cash distributions, the approximate convention is cash_amount / prior_close. This value is used by real_world_events.apply_reason_overrides() to test whether the real-world event magnitude reconciles to abs(diff_return) within tolerance.">expected return impact</th>
+<th title="External research narrative summary. Per the analyst instructions, it should be row-specific, name Massive and yFinance explicitly, summarize sources reviewed, describe the real-world event or absence of one, explain economic plausibility, and tie the conclusion back to input row math such as ms_return, yf_return, diff_return, event markers, and expected return impact.">evidence summary</th>
+<th title="External research description of the real-world event or explanation associated with the ticker/date. This may describe a split, distribution, merger, rights offering, news event, pricing-method explanation, or the absence/uncertainty of a real event depending on the analyst output.">real world event</th>
+<th title="Human-readable summary of the suspected Massive-side problem, generated from analysis_reason_code and optional real-world research. Blank when the pipeline does not identify a Massive-focused issue or when research concludes likely_correct_source is MASSIVE or BOTH.">massive problem summary</th>
+<th title="Human-readable explanation of why Massive may be incorrect or may need review, generated from analysis_reason_code and optional real-world research. Blank when the pipeline does not identify a Massive-focused issue or when research concludes likely_correct_source is MASSIVE or BOTH.">massive why incorrect</th>
+<th title="Suggested remediation action for Massive data or Massive return methodology, generated from analysis_reason_code and optional real-world research. When research concludes likely_correct_source is MASSIVE or BOTH, this is cleared because no Massive remediation is recommended. Otherwise examples include adding or correcting missing corporate actions, reviewing adjustment-factor history, rebuilding adjusted close and return chains, or manually reviewing close/adjusted-close/corporate-action inputs.">massive fix action</th>
+<th title="Primary URL supporting the real-world event research conclusion. The instructions prefer authoritative sources such as SEC filings, investor relations releases, exchange notices, or official corporate-action announcements where available.">primary source url</th>
+<th title="Secondary or confirming URL supporting the real-world event research conclusion. The instructions allow credible independent sources such as Reuters, Bloomberg, Yahoo Finance, Nasdaq, MarketWatch, Macrotrends, or company press releases.">secondary source url</th>
+<th title="Deterministic diagnostic classification assigned by the audit pipeline. It explains the main reason the row needs review. When real-world research is available, the code may be adjusted so the diagnostic agrees with likely_correct_source.
+
+Possible values, alphabetically:
+o CLOSE_REVERSAL = Massive/yFinance return difference reverses on an adjacent trading day, suggesting a close-source or timing artifact rather than a corporate action.
+  Example: On Tuesday, Massive return is -2.00% and yFinance return is -3.00%, so diff_return is -1.00%. On Wednesday, Massive return is +1.00% and yFinance return is +2.00%, so diff_return is +1.00%. The equal and opposite differences suggest a close timing issue, not a real event.
+o HIGH_SCORE_ANOMALY = Massive return has a high heuristic anomaly score even when the Massive/yFinance return difference is not material.
+  Example: Massive and yFinance both show +15.00% for the day, so diff_return is 0.00%. The ticker&#x27;s recent daily moves are usually near 1.00%, so the +15.00% move still needs review.
+o EVENT_SOURCE_MISMATCH = Massive and yFinance report different dividend/split event markers for the date, especially when both sources have event markers but use different event formatting, grouping, amounts, or source-event representation and the residual return difference is small. Pre-research evidence does not determine which source is economically correct.
+  Example: On the same ticker/date, Massive reports ca:0.25 while yFinance reports ca:0.50. With a $50.00 prior close, that is about +0.50% versus +1.00% expected dividend impact.
+o EVENT_RETURN_BASIS_MISMATCH = Massive and yFinance record the same dividend/split marker, but the event-return percentage differs because the same event amount is applied to different historical price or adjustment bases.
+  Example: Both sources report ca:0.52 and show the same raw price return, but one source&#x27;s historical close is $28.00 while the other&#x27;s is $21.00 because of a later vendor adjustment methodology. The same $0.52 cash dividend therefore produces different event-return percentages.
+o MS_ADJ_FACTOR_CONTINUITY = Massive adjustment-factor continuity does not align with the adjusted-return difference, and the discrepancy is not better explained by a same-day event-source or event-return-basis mismatch.
+  Example: Both sources show close rising from $100.00 to $101.00, a +1.00% price return. Both also show a $1.00 dividend, so the adjusted return should be about +2.00%. Massive&#x27;s adjusted-return chain shows +1.20%, so the adjustment-factor continuity does not reconcile.
+o MS_DIV_SPLIT_RETURN_MISMATCH = Massive implied dividend/split return does not reconcile to Massive explicit event return.
+  Example: Massive records a $0.50 dividend and prior close is $50.00, so the explicit dividend impact is about +1.00%. Massive&#x27;s adjusted close implies a +2.00% dividend/split impact instead.
+o MS_EVENT_DATE_MISMATCH = Massive appears to have an event on the wrong trading date.
+  Example: A $0.50 dividend has confirmed ex-date Tuesday. Massive shows ca:0.50 on Monday and no event on Tuesday, while yFinance shows ca:0.50 on Tuesday.
+o MS_MISSING_EVENT = Massive appears to be missing a corporate-action event or related adjustment needed to explain the return difference.
+  Example: yFinance records sp:1.05 for a confirmed spin-off, implying about +5.00% adjusted-return impact. Massive has no event marker and shows a return about 5.00 percentage points lower.
+o MS_EXTRA_EVENT = Massive records an extra corporate-action event or extra event amount not supported by the comparison source and adjusted-return difference.
+  Example: Research confirms one $0.65 dividend. Massive records ca:0.65 ca:0.65, yFinance records ca:0.65, and diff_return reconciles to Massive&#x27;s extra $0.65 event-return impact.
+o MS_PARTIAL_EVENT = Massive records a same-day corporate-action event, but the recorded event amount appears incomplete relative to the comparison source and the adjusted-return difference.
+  Example: Research confirms a $0.15 dividend made up of a $0.075 base dividend plus a $0.075 variable dividend. Massive records ca:0.075, yFinance records ca:0.15, and diff_return reconciles to the missing $0.075 event-return impact.
+o MS_RETURN_METHOD_UNRESOLVED = Massive return differs from yFinance, but the input fields do not isolate a single deterministic cause.
+  Example: Massive return is +2.00% and yFinance return is +3.20%, so diff_return is +1.20%. There is no event marker mismatch, no factor continuity mismatch, and no adjacent-day reversal to explain it.
+o YF_DIV_SPLIT_RETURN_MISMATCH = yFinance implied dividend/split return does not reconcile to yFinance explicit event return.
+  Example: yFinance records a $0.40 dividend and prior close is $40.00, so the explicit dividend impact is about +1.00%. yFinance&#x27;s adjusted close implies a +2.50% dividend/split impact instead.
+o YF_EVENT_DATE_MISMATCH = post-research override indicating yFinance appears to have the event on the wrong trading date.
+  Example: Research confirms a $0.60 dividend belongs on Thursday. Massive shows ca:0.60 on Thursday, but yFinance shows ca:0.60 on Wednesday.
+o YF_MISSING_EVENT = post-research override indicating yFinance appears to be missing a corporate-action event or related adjustment.
+  Example: Research confirms a $0.75 dividend with prior close $75.00, so the expected impact is about +1.00%. Massive shows ca:0.75, but yFinance has no dividend marker or adjusted-return impact.">analysis reason code</th>
+<th title="Compact Massive corporate-action marker string for the ticker/date. Split events are represented as sp:&lt;split_factor&gt;, where split_factor is split_to / split_from. Cash dividend/distribution events are represented as ca:&lt;cash_amount&gt;. Multiple same-day events may be space-separated.">Massive ms_div_split</th>
+<th title="Compact yFinance corporate-action marker string for the ticker/date. Split events are represented as sp:&lt;split_factor&gt;, where split_factor is yFinance&#x27;s split_ratio. Cash dividend/distribution events are represented as ca:&lt;cash_amount&gt;. Multiple same-day events may be space-separated.">yFinance yf_div_split</th>
+<th title="Final Massive adjusted return for the ticker/date, calculated from the percentage change in the pipeline&#x27;s Massive adjusted close series.">Massive ms_return</th>
+<th title="Final yFinance adjusted return for the ticker/date, calculated from the percentage change in yFinance adjusted close.">yFinance yf_return</th>
+<th title="Material adjusted-return difference between yFinance and Massive, using the sign convention yf_return - ms_return. Positive means yFinance&#x27;s adjusted return is higher than Massive&#x27;s; negative means yFinance&#x27;s adjusted return is lower. Differences below the configured 1e-4 tolerance are set to null.">diff return</th>
+<th title="Deterministic pre-research anomaly score generated from Massive-side return behavior. The score is not a probability and does not identify the correct vendor by itself. It is a routing signal that helps identify rows where Massive&#x27;s adjusted return looks unusual, even when Massive and yFinance returns agree.
+
+Higher scores indicate that more independent anomaly signals were present.
+
+Typical interpretation:
+o 0 = no independent Massive-side anomaly signals were triggered. The row may still require review because of a vendor return difference, event-marker mismatch, or other reconciliation issue.
+o 1-3 = low anomaly signal. One or more mild conditions may be present, but the row is usually reviewed only if another diagnostic also requires attention.
+o 4-6 = moderate anomaly signal. The Massive return may be unusually large, inconsistent with nearby price behavior, or close to a corporate-action-style return pattern. These rows are worth review, especially when paired with event or adjustment differences.
+o 7-10 = high anomaly signal. Multiple independent checks suggest the Massive return is unusual relative to price movement, adjustment mechanics, nearby returns, or corporate-action expectations.
+o 11+ = very high anomaly signal. The row has several strong anomaly indicators and should be reviewed even if Massive and yFinance returns are identical, because both vendors may be reflecting a real market event or both may share a questionable treatment.
+
+Important notes:
+o The score is additive: multiple smaller signals can produce a high score.
+o The score is pre-research only. Real-world research and input row math determine the final classification.
+o A high score does not imply Massive is wrong. It means the row deserves investigation.
+o A score of 0 does not imply the row is correct. It may still be flagged by return differences, event mismatches, adjustment-factor issues, or close-reversal diagnostics.">heuristic anomaly score</th>
+</tr></thead>
+<tbody>
+<tr>
+<td class="frozen-col frozen-ticker">ALLE</td>
+<td class="frozen-col frozen-date">2025-09-15</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.002914</td>
+<td class="wrap">Allegion investor relations announced a $0.51 quarterly dividend payable Sept. 30, 2025 to shareholders of record Sept. 15, 2025, and Allegion dividend history independently lists declared 09/04/2025, record 09/15/2025, payable 09/30/2025, amount $0.51. No split, spin-off, merger, rights issue, or material news event was identified for the row. Input row math supports Massive: Massive records ms_div_split=ca:0.51 while yFinance records no event, ms_return=0.009684, yf_return=0.006742, diff_return=-0.002942, and Massive explicit event return 0.002914 matches the confirmed dividend impact. yFinance is lower by approximately the missing dividend adjustment, so Massive is the economically correct source.</td>
+<td class="wrap">Allegion $0.51 quarterly cash dividend with Sept. 15, 2025 record/ex-dividend date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investor.allegion.com/news-and-events/news-releases/2025/09-04-2025-220022782">https://investor.allegion.com/news-and-events/news-releases/2025/09-04-2025-220022782</a></td>
+<td class="url"><a href="https://investor.allegion.com/stock-information/dividend-info">https://investor.allegion.com/stock-information/dividend-info</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.51</td>
+<td></td>
+<td>0.009684</td>
+<td>0.006742</td>
+<td>-0.002942</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ALLE</td>
+<td class="frozen-col frozen-date">2025-12-16</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.003128</td>
+<td class="wrap">Allegion investor relations announced a $0.51 quarterly dividend declared Dec. 3, 2025, payable Dec. 31, 2025 to shareholders of record Dec. 16, 2025; Allegion dividend history also lists declared 12/03/2025, record 12/16/2025, payable 12/31/2025, amount $0.51. No split, spin-off, merger, rights issue, or material news event was identified for the row. Input row math supports Massive: Massive records ms_div_split=ca:0.51 while yFinance records no event, ms_return=-0.017718, yf_return=-0.020790, diff_return=-0.003072, and Massive explicit event return 0.003128 matches the confirmed dividend impact. yFinance is lower by approximately the missing dividend adjustment, so Massive is the economically correct source.</td>
+<td class="wrap">Allegion $0.51 quarterly cash dividend with Dec. 16, 2025 record/ex-dividend date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investor.allegion.com/news-and-events/news-releases/2025/12-04-2025-123016297">https://investor.allegion.com/news-and-events/news-releases/2025/12-04-2025-123016297</a></td>
+<td class="url"><a href="https://investor.allegion.com/stock-information/dividend-info">https://investor.allegion.com/stock-information/dividend-info</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.51</td>
+<td></td>
+<td>-0.017718</td>
+<td>-0.02079</td>
+<td>-0.003072</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ALLE</td>
+<td class="frozen-col frozen-date">2026-02-17</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.09376</td>
+<td class="wrap">Allegion released Q4 and full-year 2025 results and 2026 outlook on Feb. 17, 2026; the company reported adjusted EPS of $1.94 and 2026 adjusted EPS guidance of $8.70 to $8.90. MarketBeat earnings data show Q4 2025 reported on 2/17/2026, adjusted EPS $1.94 versus $2.01 consensus and revenue $1.03B versus $1.04B estimate. No split, dividend, spin-off, merger, or rights event was identified for the row. Input row math indicates no Massive/yFinance discrepancy: ms_return=-0.093760 equals yf_return=-0.093760, diff_return is blank, both event marker fields are blank, and both vendors have the same raw price return. The large move is a real news-driven market move, but Massive and yFinance are economically equivalent for return reconciliation.</td>
+<td class="wrap">Allegion Q4/full-year 2025 earnings release and 2026 outlook on Feb. 17, 2026, with results below consensus.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.allegion.com/corp/en/news/year/2026/2025-results.html">https://www.allegion.com/corp/en/news/year/2026/2025-results.html</a></td>
+<td class="url"><a href="https://www.marketbeat.com/stocks/NYSE/ALLE/earnings/">https://www.marketbeat.com/stocks/NYSE/ALLE/earnings/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.09376</td>
+<td>-0.09376</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">AMCR</td>
+<td class="frozen-col frozen-date">2024-05-01</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.096197</td>
+<td class="wrap">Amcor reported fiscal Q3 2024 results after the Apr. 30, 2024 close, with adjusted EPS of 17.8 cents, adjusted EBIT up 3% on a comparable constant-currency basis, and fiscal 2024 adjusted EPS guidance raised to 68.5-71 cents; MarketBeat also summarizes the Q3 call and notes the guidance raise and improved sequential volume trends. No same-day split, dividend, spin-off, merger, or rights event was identified for May 1, 2024. Input row math shows Massive and yFinance are economically identical: ms_return=0.096197 equals yf_return=0.096197, diff_return is blank, both event marker fields are blank, and both raw price returns are 0.096197. The large move is a real earnings/news reaction, not a vendor reconciliation issue.</td>
+<td class="wrap">Amcor fiscal Q3 2024 earnings release and raised fiscal 2024 adjusted EPS guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.nasdaq.com/press-release/amcor-reports-third-quarter-result-and-raises-fiscal-2024-adjusted-eps-guidance-2024">https://www.nasdaq.com/press-release/amcor-reports-third-quarter-result-and-raises-fiscal-2024-adjusted-eps-guidance-2024</a></td>
+<td class="url"><a href="https://www.marketbeat.com/earnings/reports/2024-4-30-amcor-plc-stock/">https://www.marketbeat.com/earnings/reports/2024-4-30-amcor-plc-stock/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.096197</td>
+<td>0.096197</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">AMCR</td>
+<td class="frozen-col frozen-date">2025-08-14</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.118712</td>
+<td class="wrap">Amcor released fiscal 2025 Q4 and full-year results on Aug. 14, 2025, including the Berry Global acquisition close, GAAP net loss in Q4, adjusted EPS of 20.0 cents, and FY2026 EPS/free-cash-flow guidance. Investing.com independently reported that Amcor Q4 EPS of $0.20 missed the $0.21 analyst estimate and revenue of $5.08B missed the $5.18B consensus estimate. No split, ex-dividend, spin-off, merger-closing adjustment, or rights event was identified for this trading row. Input row math shows Massive and yFinance are economically identical: ms_return=-0.118712 equals yf_return=-0.118712, diff_return is blank, both event markers are blank, and both raw price returns are -0.118712. The large move is a real earnings/news reaction, but there is no Massive/yFinance return discrepancy.</td>
+<td class="wrap">Amcor fiscal 2025 Q4/full-year earnings release, Berry integration update, and earnings/revenue miss reported Aug. 14, 2025.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.prnewswire.com/news-releases/amcor-reports-fiscal-2025-q4-results-expects-strong-earnings-growth-in-fiscal-2026-302529997.html">https://www.prnewswire.com/news-releases/amcor-reports-fiscal-2025-q4-results-expects-strong-earnings-growth-in-fiscal-2026-302529997.html</a></td>
+<td class="url"><a href="https://www.investing.com/news/earnings/amcor-plc-earnings-missed-revenue-fell-short-of-estimates-4191203">https://www.investing.com/news/earnings/amcor-plc-earnings-missed-revenue-fell-short-of-estimates-4191203</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.118712</td>
+<td>-0.118712</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">AMCR</td>
+<td class="frozen-col frozen-date">2025-09-05</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.015269</td>
+<td class="wrap">Amcor declared a quarterly cash dividend of 12.75 cents per NYSE ordinary share, with NYSE ex-dividend date Sept. 5, 2025, record date Sept. 5, 2025, and payment date Sept. 25, 2025; dividend-history data also lists the Sept. 5, 2025 dividend. No split, spin-off, merger, rights issue, or second same-day distribution was identified for this row. Input row math supports Massive: Massive records ms_div_split=ca:0.1275 while yFinance records no event, ms_return=0.009425, yf_return=-0.005988, diff_return=-0.015413, and Massive explicit event return 0.015269 matches the confirmed dividend impact. yFinance is lower by approximately the missing cash-distribution adjustment, so Massive is the economically correct source.</td>
+<td class="wrap">Amcor $0.1275 quarterly cash dividend with Sept. 5, 2025 NYSE ex-dividend/record date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://assets.ctfassets.net/f7tuyt85vtoa/59MtaQWSXfRLMgUiyh0sdY/5bc1cb7cc283d4d968ac52b6d1f06e60/Amcor_4Q_FY2025_press_release__FINAL_.pdf">https://assets.ctfassets.net/f7tuyt85vtoa/59MtaQWSXfRLMgUiyh0sdY/5bc1cb7cc283d4d968ac52b6d1f06e60/Amcor_4Q_FY2025_press_release__FINAL_.pdf</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/amcr/dividend/">https://stockanalysis.com/stocks/amcr/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.1275</td>
+<td></td>
+<td>0.009425</td>
+<td>-0.005988</td>
+<td>-0.015413</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">AMCR</td>
+<td class="frozen-col frozen-date">2025-11-28</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.015081</td>
+<td class="wrap">Amcor announced an increased quarterly cash dividend of 13.0 cents per NYSE ordinary share, with NYSE ex-dividend date Nov. 28, 2025, record date Nov. 28, 2025, and payment date Dec. 17, 2025; MarketScreener independently reports the same 13.0 cent dividend and dates. No split, spin-off, merger, rights issue, or second same-day distribution was identified for this row. Input row math supports Massive: Massive records ms_div_split=ca:0.13 while yFinance records no event, ms_return=0.003534, yf_return=-0.011601, diff_return=-0.015134, and Massive explicit event return 0.015081 matches the confirmed dividend impact. yFinance is lower by approximately the missing cash-distribution adjustment, so Massive is the economically correct source.</td>
+<td class="wrap">Amcor $0.13 quarterly cash dividend with Nov. 28, 2025 NYSE ex-dividend/record date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://company-announcements.afr.com/asx/amc/a6c2f5fa-ba92-11f0-825d-8ea10bee7688.pdf">https://company-announcements.afr.com/asx/amc/a6c2f5fa-ba92-11f0-825d-8ea10bee7688.pdf</a></td>
+<td class="url"><a href="https://www.marketscreener.com/news/amcor-plc-increases-quarterly-cash-dividend-payable-on-december-17-2025-ce7d5cdddc89f226">https://www.marketscreener.com/news/amcor-plc-increases-quarterly-cash-dividend-payable-on-december-17-2025-ce7d5cdddc89f226</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.13</td>
+<td></td>
+<td>0.003534</td>
+<td>-0.011601</td>
+<td>-0.015134</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BDX</td>
+<td class="frozen-col frozen-date">2023-11-09</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.092529</td>
+<td class="wrap">BD reported Q4/full-year fiscal 2023 results and fiscal 2024 guidance on Nov. 9, 2023, including adjusted diluted EPS of $3.42 and fiscal 2024 adjusted diluted EPS guidance of $12.70 to $13.00. Benzinga reported the shares were down more than 8% after Q4 EPS slightly missed consensus and FY2024 EPS guidance was below consensus. No split, dividend, spin-off, merger, or rights event was identified for the row. Input row math shows Massive and yFinance are economically identical: ms_return=-0.092529 equals yf_return=-0.092529, diff_return is blank, both event markers are blank, and both raw price returns are -0.092529. The large move is a real earnings/guidance reaction, not a vendor reconciliation issue.</td>
+<td class="wrap">BD Q4 fiscal 2023 earnings and FY2024 guidance release on Nov. 9, 2023.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bd.com/news-events/press-releases/detail/802/bd-reports-fourth-quarter-and-full-year-fiscal-2023-financial-results">https://investors.bd.com/news-events/press-releases/detail/802/bd-reports-fourth-quarter-and-full-year-fiscal-2023-financial-results</a></td>
+<td class="url"><a href="https://www.benzinga.com/news/earnings/23/11/35701077/why-is-medical-device-giant-becton-dickinson-stock-trading-lower-today">https://www.benzinga.com/news/earnings/23/11/35701077/why-is-medical-device-giant-becton-dickinson-stock-trading-lower-today</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.092529</td>
+<td>-0.092529</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BDX</td>
+<td class="frozen-col frozen-date">2025-05-01</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.181322</td>
+<td class="wrap">BD reported fiscal Q2 2025 results on May 1, 2025 and lowered fiscal 2025 organic revenue growth guidance to 3.0%-3.5% from 4.0%-4.5% and adjusted diluted EPS guidance to $14.06-$14.34 from $14.30-$14.60. AInvest reported BDX fell about 18% that day after the earnings/guidance news and downgrades. No split, dividend, spin-off, merger, or rights event was identified for this row. Input row math shows Massive and yFinance are economically identical: ms_return=-0.181322 equals yf_return=-0.181322, diff_return is blank, both event markers are blank, and both raw price returns are -0.181322. The large move is a real earnings/guidance market reaction, not a Massive/yFinance discrepancy.</td>
+<td class="wrap">BD fiscal Q2 2025 earnings release and lowered fiscal 2025 guidance on May 1, 2025.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bd.com/news-events/press-releases/detail/885/bd-reports-second-quarter-fiscal-2025-financial-results">https://investors.bd.com/news-events/press-releases/detail/885/bd-reports-second-quarter-fiscal-2025-financial-results</a></td>
+<td class="url"><a href="https://www.ainvest.com/news/becton-dickinson-bdx-plunges-18-14-earnings-downgrades-2505/">https://www.ainvest.com/news/becton-dickinson-bdx-plunges-18-14-earnings-downgrades-2505/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.181322</td>
+<td>-0.181322</td>
+<td></td>
+<td>11</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2021-12-07</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>PRICING_METHOD</td>
+<td>0.0</td>
+<td class="wrap">Baker Hughes announced its Class A common stock would begin trading on Nasdaq on Dec. 7, 2021 after transferring its listing from the NYSE; dividend-history data show no Baker Hughes ex-dividend date on Dec. 7 or Dec. 8, 2021, with the nearest listed dividend on Nov. 1, 2021. No split, cash distribution, spin-off, merger, rights issue, earnings release, or material company news was identified that explains a one-day economic return difference. Input row math supports a non-actionable close-source/timing explanation: both event marker fields are blank, both explicit event returns are 0.0, ms_return=0.029075, yf_return=0.018837, diff_return=-0.010238, and the next trading day reverses with diff_return=0.009977. Massive and yFinance are economically equivalent over the two-day window, so neither source is more correct for corporate-action reconciliation.</td>
+<td class="wrap">No corporate-action event identified; listing transfer to Nasdaq began Dec. 7, 2021 but does not create economic return impact.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/static-files/5584f898-b7ee-42d4-9ccf-d28578af5edd">https://investors.bakerhughes.com/static-files/5584f898-b7ee-42d4-9ccf-d28578af5edd</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.029075</td>
+<td>0.018837</td>
+<td>-0.010238</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2021-12-08</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>PRICING_METHOD</td>
+<td>0.0</td>
+<td class="wrap">Baker Hughes listing-transfer materials identify Dec. 7, 2021 as the start of Nasdaq trading, and dividend-history data show no Baker Hughes ex-dividend, split, or other distribution on Dec. 8, 2021. No split, cash distribution, spin-off, merger, rights issue, earnings release, or material company news was identified for the row. Input row math supports a non-actionable close-source/timing explanation: both event marker fields are blank, both explicit event returns are 0.0, ms_return=-0.007163, yf_return=0.002814, diff_return=0.009977, and the prior trading day had the offsetting diff_return=-0.010238. Massive and yFinance are economically equivalent over the two-day window, so neither source is more correct for corporate-action reconciliation.</td>
+<td class="wrap">No corporate-action event identified; adjacent-day return difference reverses after Dec. 7, 2021 listing-transfer date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/static-files/5584f898-b7ee-42d4-9ccf-d28578af5edd">https://investors.bakerhughes.com/static-files/5584f898-b7ee-42d4-9ccf-d28578af5edd</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.007163</td>
+<td>0.002814</td>
+<td>0.009977</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2024-10-14</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Baker Hughes Q3 2024 results and the quarterly dividend announcement both occurred on Oct. 22, 2024, after the Oct. 14 row; dividend-history data show the relevant 2024 dividend ex-dates were Aug. 6 and Nov. 4, not Oct. 14 or Oct. 15. No split, distribution, spin-off, merger, rights issue, or material company news was identified for Oct. 14. Input row math shows a tiny adjacent-day close reversal: both event markers are blank, ms_return=-0.001724, yf_return=-0.001592, diff_return=0.000133, and the next row reverses with diff_return=-0.000128. The difference is immaterial and non-actionable; Massive and yFinance are economically equivalent.</td>
+<td class="wrap">No real-world event identified for BKR on Oct. 14, 2024.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Company-Announces-Third-Quarter-2024-Results-10-22-2024/default.aspx">https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Company-Announces-Third-Quarter-2024-Results-10-22-2024/default.aspx</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.001724</td>
+<td>-0.001592</td>
+<td>0.000133</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2024-10-15</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Baker Hughes Q3 2024 earnings and dividend news were dated Oct. 22, 2024, and dividend-history data show no ex-dividend date on Oct. 15, 2024. No split, cash distribution, spin-off, merger, rights issue, or material company news was identified for the row. Input row math shows a tiny adjacent-day close reversal: both event markers are blank, ms_return=-0.034941, yf_return=-0.035069, diff_return=-0.000128, and the prior row had diff_return=0.000133. The reversal and lack of event evidence support BOTH rather than a Massive or yFinance correction.</td>
+<td class="wrap">No real-world event identified for BKR on Oct. 15, 2024.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Company-Announces-Third-Quarter-2024-Results-10-22-2024/default.aspx">https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Company-Announces-Third-Quarter-2024-Results-10-22-2024/default.aspx</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.034941</td>
+<td>-0.035069</td>
+<td>-0.000128</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2024-11-06</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>NEWS</td>
+<td>0.107828</td>
+<td class="wrap">Baker Hughes had recently reported Q3 2024 results with record adjusted EBITDA and strong margin commentary, and GuruFocus reported BKR shares were up 7.57% intraday on Nov. 6, 2024. No same-day split, cash distribution, spin-off, merger, or rights event was identified; the nearest dividend ex-date was Nov. 4, 2024 and is not present in either vendor event marker for this row. Input row math shows no vendor discrepancy: ms_return=0.107828 equals yf_return=0.107828, diff_return is blank, both event markers are blank, and both raw price returns are 0.107828. The large move is market/news behavior, not a Massive/yFinance reconciliation issue.</td>
+<td class="wrap">Baker Hughes share-price rally following strong Q3 2024 results and market momentum.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Company-Announces-Third-Quarter-2024-Results-10-22-2024/default.aspx">https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Company-Announces-Third-Quarter-2024-Results-10-22-2024/default.aspx</a></td>
+<td class="url"><a href="https://www.gurufocus.com/news/2586449/baker-hughes-co-bkr-shares-up-757-on-nov-6?mobile=true">https://www.gurufocus.com/news/2586449/baker-hughes-co-bkr-shares-up-757-on-nov-6?mobile=true</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.107828</td>
+<td>0.107828</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2024-11-08</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Baker Hughes declared a $0.21 dividend with Nov. 4, 2024 record/ex-dividend timing and Nov. 14 payment, while dividend-history data show no ex-dividend date on Nov. 8 or Nov. 11. No split, spin-off, merger, rights issue, or material row-specific news was identified for Nov. 8. Input row math shows a tiny adjacent-day close reversal: both event markers are blank, ms_return=-0.001972, yf_return=-0.001856, diff_return=0.000116, and the following reviewed row reverses with diff_return=-0.000119. Massive and yFinance are economically equivalent for audit purposes.</td>
+<td class="wrap">No real-world event identified for BKR on Nov. 8, 2024.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Declares-Quarterly-Dividend-10-22-2024/default.aspx">https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Declares-Quarterly-Dividend-10-22-2024/default.aspx</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.001972</td>
+<td>-0.001856</td>
+<td>0.000116</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2024-11-11</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Baker Hughes dividend materials show the quarterly dividend tied to Nov. 4 record/ex-dividend timing and Nov. 14 payment, and dividend-history data show no event on Nov. 11, 2024. No split, spin-off, merger, rights issue, or material row-specific news was identified. Input row math shows the offsetting side of a tiny close reversal: both event markers are blank, ms_return=0.025456, yf_return=0.025337, diff_return=-0.000119, following the prior reviewed diff_return=0.000116. The small reversal supports BOTH and no actionable corporate-action finding.</td>
+<td class="wrap">No real-world event identified for BKR on Nov. 11, 2024.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Declares-Quarterly-Dividend-10-22-2024/default.aspx">https://investors.bakerhughes.com/news/press-releases/news-details/2024/Baker-Hughes-Declares-Quarterly-Dividend-10-22-2024/default.aspx</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.025456</td>
+<td>0.025337</td>
+<td>-0.000119</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2025-07-23</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.116442</td>
+<td class="wrap">Baker Hughes released Q2 2025 results after the July 22 close, reporting adjusted EPS of $0.63, adjusted EBITDA up 7% year over year, and raised full-year revenue/EBITDA guidance for IET; MarketBeat reports EPS of $0.63 beat the $0.55 consensus and revenue of $6.91B beat estimates. No split, dividend, spin-off, merger, or rights event was identified for July 23. Input row math shows no vendor discrepancy: ms_return=0.116442 equals yf_return=0.116442, diff_return is blank, both event markers are blank, and both raw price returns are 0.116442. The large move is an earnings/news reaction, not a Massive/yFinance reconciliation issue.</td>
+<td class="wrap">Baker Hughes Q2 2025 earnings beat and guidance/update released after the July 22, 2025 close.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.bakerhughes.com/files/doc_news/2025/07/baker-hughes-company-announces-second-quarter-2025-results.pdf">https://investors.bakerhughes.com/files/doc_news/2025/07/baker-hughes-company-announces-second-quarter-2025-results.pdf</a></td>
+<td class="url"><a href="https://www.marketbeat.com/earnings/reports/2025-7-22-baker-hughes-stock/">https://www.marketbeat.com/earnings/reports/2025-7-22-baker-hughes-stock/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.116442</td>
+<td>0.116442</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2025-08-28</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Dividend-history data show no Baker Hughes ex-dividend date on Aug. 28 or Aug. 29, 2025; the nearest ex-dividend date was Aug. 5, 2025. AInvest reported only a small Aug. 29 move tied to general LNG-project news and mixed sentiment, not a split, distribution, spin-off, merger, or rights event. Input row math shows a tiny adjacent-day close reversal: both event markers are blank, ms_return=0.017530, yf_return=0.017642, diff_return=0.000112, and the next row reverses with diff_return=-0.000109. Massive and yFinance are economically equivalent for audit purposes.</td>
+<td class="wrap">No corporate-action event identified for BKR on Aug. 28, 2025.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td class="url"><a href="https://www.ainvest.com/news/bkr-shares-drop-0-36-220m-volume-baker-hughes-secures-key-role-major-u-s-lng-project-ranking-424th-market-activity-2508/">https://www.ainvest.com/news/bkr-shares-drop-0-36-220m-volume-baker-hughes-secures-key-role-major-u-s-lng-project-ranking-424th-market-activity-2508/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.01753</td>
+<td>0.017642</td>
+<td>0.000112</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BKR</td>
+<td class="frozen-col frozen-date">2025-08-29</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-LOW">LOW</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Dividend-history data show no Baker Hughes ex-dividend date on Aug. 29, 2025, and AInvest described only a modest Aug. 29 price move while noting Baker Hughes LNG-project involvement. No split, cash distribution, spin-off, merger, rights issue, or material corporate-action event was identified for the row. Input row math shows the offsetting side of a tiny close reversal: both event markers are blank, ms_return=-0.003621, yf_return=-0.003730, diff_return=-0.000109, following the prior reviewed diff_return=0.000112. The discrepancy is immaterial and non-actionable, so Massive and yFinance are both acceptable.</td>
+<td class="wrap">No corporate-action event identified for BKR on Aug. 29, 2025.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/bkr/dividend/">https://stockanalysis.com/stocks/bkr/dividend/</a></td>
+<td class="url"><a href="https://www.ainvest.com/news/bkr-shares-drop-0-36-220m-volume-baker-hughes-secures-key-role-major-u-s-lng-project-ranking-424th-market-activity-2508/">https://www.ainvest.com/news/bkr-shares-drop-0-36-220m-volume-baker-hughes-secures-key-role-major-u-s-lng-project-ranking-424th-market-activity-2508/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.003621</td>
+<td>-0.00373</td>
+<td>-0.000109</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BWA</td>
+<td class="frozen-col frozen-date">2023-11-02</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>NEWS</td>
+<td>-0.130693</td>
+<td class="wrap">BorgWarner reported third-quarter 2023 results on November 2, 2023 and reduced its 2023 sales outlook, including lower eProduct revenue expectations than earlier guidance. Benzinga reported BWA shares were trading lower by about 11% after the earnings release and outlook update. The input row fields show no corporate-action mismatch and equal Massive and yFinance returns of -13.0693%, so the large move appears to be real market news rather than a vendor adjustment issue.</td>
+<td class="wrap">BorgWarner sold off after third-quarter 2023 results and a reduced full-year sales/eProduct outlook.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.borgwarner.com/docs/default-source/press-release-downloads/earnings-q3-2023.pdf?sfvrsn=22a5d83d_6">https://www.borgwarner.com/docs/default-source/press-release-downloads/earnings-q3-2023.pdf?sfvrsn=22a5d83d_6</a></td>
+<td class="url"><a href="https://www.benzinga.com/news/earnings/23/11/35564977/why-automotive-supplier-borgwarners-shares-are-diving-today">https://www.benzinga.com/news/earnings/23/11/35564977/why-automotive-supplier-borgwarners-shares-are-diving-today</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.130693</td>
+<td>-0.130693</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">BWA</td>
+<td class="frozen-col frozen-date">2026-02-11</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.224528</td>
+<td class="wrap">BorgWarner reported 2025 results and 2026 guidance on February 11, 2026, including adjusted EPS growth, margin improvement, shareholder returns, and a strategic data-center turbine generator award. Zacks reported fourth-quarter adjusted EPS of $1.35 beat consensus and rose from the prior-year quarter. The input row fields show no corporate-action mismatch and equal Massive and yFinance returns of +22.4528%, so the high return is best explained by earnings and strategic-contract news, with both vendors economically aligned.</td>
+<td class="wrap">BorgWarner rallied sharply after fourth-quarter 2025 results, 2026 guidance, and a new data-center power-generation award.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.nasdaq.com/press-release/borgwarner-reports-2025-results-and-provides-2026-guidance-returned-approximately-630">https://www.nasdaq.com/press-release/borgwarner-reports-2025-results-and-provides-2026-guidance-returned-approximately-630</a></td>
+<td class="url"><a href="https://www.zacks.com/stock/news/2854330/borgwarners-q4-earnings-beat-expectations-revenues-rise-yy?art_rec=blog-analyst_blog-up_next-ID01-img-2854330">https://www.zacks.com/stock/news/2854330/borgwarners-q4-earnings-beat-expectations-revenues-rise-yy?art_rec=blog-analyst_blog-up_next-ID01-img-2854330</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.224528</td>
+<td>0.224528</td>
+<td></td>
+<td>11</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CB</td>
+<td class="frozen-col frozen-date">2025-09-12</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.003429</td>
+<td class="wrap">Chubb declared a quarterly dividend of $0.97 per share payable October 3, 2025 to shareholders of record on September 12, 2025, and Chubb's dividend-history table lists the same $0.97 regular cash dividend for the September 12, 2025 record date. The input row math shows Massive includes ca:0.97 while yFinance has no dividend/split entry; the return difference of -0.3383 percentage points closely matches the +0.3429% dividend-impact bucket. Massive appears to include the real dividend adjustment and yFinance appears to omit it for this row.</td>
+<td class="wrap">Chubb had a $0.97 regular quarterly cash dividend associated with the September 12, 2025 record/ex-dividend timing.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://news.chubb.com/2025-08-14-Chubb-Limited-Board-Declares-Quarterly-Dividend">https://news.chubb.com/2025-08-14-Chubb-Limited-Board-Declares-Quarterly-Dividend</a></td>
+<td class="url"><a href="https://investors.chubb.com/stock-info/Dividends/default.aspx?languageid=1">https://investors.chubb.com/stock-info/Dividends/default.aspx?languageid=1</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.97</td>
+<td></td>
+<td>-0.013514</td>
+<td>-0.016897</td>
+<td>-0.003383</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CB</td>
+<td class="frozen-col frozen-date">2025-12-12</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.00317</td>
+<td class="wrap">Chubb's dividend-history table lists a $0.97 regular cash dividend declared November 20, 2025, with December 12, 2025 record date and January 2, 2026 payable date; StockAnalysis also lists a $0.970 dividend for December 12, 2025. The input row math shows Massive includes ca:0.97 while yFinance has no dividend/split entry; the return difference of -0.3206 percentage points closely matches the +0.3170% dividend-impact bucket. Massive appears to include the real dividend adjustment and yFinance appears to omit it for this row.</td>
+<td class="wrap">Chubb had a $0.97 regular quarterly cash dividend associated with the December 12, 2025 record/ex-dividend timing.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.chubb.com/stock-info/Dividends/default.aspx?languageid=1">https://investors.chubb.com/stock-info/Dividends/default.aspx?languageid=1</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cb/dividend/">https://stockanalysis.com/stocks/cb/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.97</td>
+<td></td>
+<td>0.011344</td>
+<td>0.008138</td>
+<td>-0.003206</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2021-09-14</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.073037</td>
+<td class="wrap">Contemporaneous coverage reported Comcast shares fell sharply on September 14, 2021 after management warned of slower broadband subscriber additions. The input row fields show no corporate-action mismatch and Massive and yFinance returns are economically identical at about -7.3037%. The large negative return is therefore consistent with real market news, not a vendor adjustment discrepancy.</td>
+<td class="wrap">Comcast shares sold off after management warned that broadband subscriber growth was slowing.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.nexttv.com/news/comcast-shares-slip-after-cfo-warns-of-broadband-slowdown">https://www.nexttv.com/news/comcast-shares-slip-after-cfo-warns-of-broadband-slowdown</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/why-comcast-stock-just-crashed-5-2021-09-14">https://www.nasdaq.com/articles/why-comcast-stock-just-crashed-5-2021-09-14</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.073037</td>
+<td>-0.073036</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2024-03-12</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">No matching Comcast dividend, split, spin-off, or other corporate-action event was identified for March 12, 2024. Comcast had announced its 2024 quarterly dividend schedule earlier in January, with the next relevant dividend timing outside this row. The input row math shows no dividend/split mismatch and a tiny +0.0115 percentage-point Massive/yFinance return difference that reverses on the next reviewed row, consistent with a close/timing-method difference rather than an economic data issue.</td>
+<td class="wrap">No material corporate-action event identified for the row; the tiny vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cmcsa/dividend/">https://stockanalysis.com/stocks/cmcsa/dividend/</a></td>
+<td class="url"><a href="https://www.cmcsa.com/news-releases/news-release-details/comcast-increases-dividend-and-share-repurchase-authorization-0">https://www.cmcsa.com/news-releases/news-release-details/comcast-increases-dividend-and-share-repurchase-authorization-0</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.008153</td>
+<td>-0.008038</td>
+<td>0.000115</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2024-03-13</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">No matching Comcast dividend, split, spin-off, or other corporate-action event was identified for March 13, 2024. Comcast dividend-history sources place the 2024 quarterly dividend dates away from this row. The input row math shows no dividend/split mismatch and a tiny -0.0116 percentage-point Massive/yFinance return difference that offsets the prior reviewed row, consistent with close/timing-method noise rather than an economically meaningful discrepancy.</td>
+<td class="wrap">No material corporate-action event identified for the row; the tiny vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cmcsa/dividend/">https://stockanalysis.com/stocks/cmcsa/dividend/</a></td>
+<td class="url"><a href="https://www.cmcsa.com/news-releases/news-release-details/comcast-increases-dividend-and-share-repurchase-authorization-0">https://www.cmcsa.com/news-releases/news-release-details/comcast-increases-dividend-and-share-repurchase-authorization-0</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.0022</td>
+<td>0.002084</td>
+<td>-0.000116</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2024-10-22</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Dividend-history sources show Comcast's nearby 2024 quarterly dividend was associated with the October 2, 2024 ex-dividend date and October 23, 2024 payment timing, not a new ex-date event on October 22. The input row math shows no dividend/split mismatch and only a +0.0123 percentage-point Massive/yFinance return difference, which reverses on the next reviewed row. This is best classified as a close/timing-method reversal with both sources economically acceptable.</td>
+<td class="wrap">No new corporate-action event identified for the row; the tiny vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cmcsa/dividend/">https://stockanalysis.com/stocks/cmcsa/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/CMCSA/dividend">https://www.slickcharts.com/symbol/CMCSA/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.025043</td>
+<td>0.025167</td>
+<td>0.000123</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2024-10-23</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Dividend-history sources show October 23, 2024 was Comcast's payment date for the earlier October 2, 2024 ex-dividend event, not a separate return-bearing ex-date adjustment. The input row math shows no dividend/split mismatch and a tiny -0.0120 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This supports a close/timing-method reversal rather than a corporate-action data issue.</td>
+<td class="wrap">No new return-bearing corporate-action event identified for the row; the tiny vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cmcsa/dividend/">https://stockanalysis.com/stocks/cmcsa/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/CMCSA/dividend">https://www.slickcharts.com/symbol/CMCSA/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.00012</td>
+<td>0.0</td>
+<td>-0.00012</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2024-12-09</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.095017</td>
+<td class="wrap">CNBC and Yahoo Finance reported Comcast shares fell sharply on December 9, 2024 after management said the company expected to lose more than 100,000 broadband subscribers in the fourth quarter amid intense competition. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of -9.5017%. The move is therefore explained by real market news, with both vendors aligned.</td>
+<td class="wrap">Comcast shares fell after management warned of larger fourth-quarter broadband subscriber losses.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2024/12/09/comcast-cmcsa-stock-falls-broadband.html">https://www.cnbc.com/2024/12/09/comcast-cmcsa-stock-falls-broadband.html</a></td>
+<td class="url"><a href="https://finance.yahoo.com/news/comcast-stock-falls-after-management-warns-broadband-subscribers-will-drop-by-over-100000-in-q4-163408369.html">https://finance.yahoo.com/news/comcast-stock-falls-after-management-warns-broadband-subscribers-will-drop-by-over-100000-in-q4-163408369.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.095017</td>
+<td>-0.095017</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2025-01-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.110011</td>
+<td class="wrap">Comcast reported fourth-quarter 2024 results on January 30, 2025. CNBC reported the stock fell about 11% after larger-than-expected broadband subscriber losses and flat Peacock subscriber growth, even though headline results beat estimates. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of -11.0011%, so the return is consistent with real earnings/subscriber news rather than a vendor data problem.</td>
+<td class="wrap">Comcast shares sold off after fourth-quarter 2024 results showed disappointing broadband subscriber losses and flat Peacock subscriber growth.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2025/01/30/comcast-cmcsa-earnings-q4-2024.html">https://www.cnbc.com/2025/01/30/comcast-cmcsa-earnings-q4-2024.html</a></td>
+<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1166691/000116669125000006/ex991-12312024.htm">https://www.sec.gov/Archives/edgar/data/1166691/000116669125000006/ex991-12312024.htm</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.110011</td>
+<td>-0.110011</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2025-10-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">No Comcast dividend, split, spin-off, or other corporate-action event was identified for October 31, 2025. Comcast had reported third-quarter 2025 results the prior day, but the input row issue is not a large return anomaly; it is a tiny +0.0183 percentage-point Massive/yFinance difference with no dividend/split mismatch that reverses on the next reviewed row. This supports a close/timing-method reversal, with both vendors economically acceptable.</td>
+<td class="wrap">No return-bearing corporate-action event identified for the row; the tiny vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cmcsa/dividend/">https://stockanalysis.com/stocks/cmcsa/dividend/</a></td>
+<td class="url"><a href="https://www.cmcsa.com/static-files/773b72aa-1d0d-405e-af6c-d5ab5471c202">https://www.cmcsa.com/static-files/773b72aa-1d0d-405e-af6c-d5ab5471c202</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.018851</td>
+<td>0.019034</td>
+<td>0.000183</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2025-11-03</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">No Comcast dividend, split, spin-off, or other corporate-action event was identified for November 3, 2025. The nearby company news was the prior-week earnings release, but the input row math shows no dividend/split mismatch and only a tiny -0.0174 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This is consistent with a close/timing-method reversal rather than a corporate-action adjustment error.</td>
+<td class="wrap">No return-bearing corporate-action event identified for the row; the tiny vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/cmcsa/dividend/">https://stockanalysis.com/stocks/cmcsa/dividend/</a></td>
+<td class="url"><a href="https://www.cmcsa.com/static-files/773b72aa-1d0d-405e-af6c-d5ab5471c202">https://www.cmcsa.com/static-files/773b72aa-1d0d-405e-af6c-d5ab5471c202</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.030717</td>
+<td>-0.030891</td>
+<td>-0.000174</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CMCSA</td>
+<td class="frozen-col frozen-date">2026-04-24</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.128951</td>
+<td class="wrap">Comcast reported first-quarter 2026 results on April 23, 2026. The next day, market coverage attributed a nearly 13% sell-off to post-earnings concerns, including an analyst downgrade and sector headwinds after the initial earnings reaction. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of -12.8951%, so the large move is consistent with real market news rather than a vendor adjustment discrepancy.</td>
+<td class="wrap">Comcast shares fell sharply after first-quarter 2026 results, post-earnings analyst action, and cable-sector concerns.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cmcsa.com/news-releases/news-release-details/comcast-reports-1st-quarter-2026-results">https://www.cmcsa.com/news-releases/news-release-details/comcast-reports-1st-quarter-2026-results</a></td>
+<td class="url"><a href="https://www.fool.com/investing/2026/04/24/why-comcast-stock-dived-by-almost-13-today/">https://www.fool.com/investing/2026/04/24/why-comcast-stock-dived-by-almost-13-today/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.128951</td>
+<td>-0.128951</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CTRA</td>
+<td class="frozen-col frozen-date">2022-03-04</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.022</td>
+<td class="wrap">Coterra dividend-history data lists a March 4, 2022 ex-dividend date with a $0.15 quarterly base dividend and a $0.41 special/variable dividend, totaling $0.56. The input row fields show Massive as ca:0.15 ca:0.41 and yFinance as ca:0.56, which are economically the same event represented with different granularity. The input row math shows only a +0.0101 percentage-point Massive/yFinance return difference, so both sources are materially correct for this distribution row.</td>
+<td class="wrap">Coterra paid a $0.56 total distribution, composed of a $0.15 base dividend and $0.41 special/variable dividend, on the March 4, 2022 ex-dividend date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.coterra.com/Investors/dividend-history/default.aspx">https://investors.coterra.com/Investors/dividend-history/default.aspx</a></td>
+<td class="url"><a href="https://dividendhistory.org/payout/CTRA/">https://dividendhistory.org/payout/CTRA/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td>ca:0.15 ca:0.41</td>
+<td>ca:0.56</td>
+<td>0.046392</td>
+<td>0.046493</td>
+<td>0.000101</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CTRA</td>
+<td class="frozen-col frozen-date">2022-11-15</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.0242</td>
+<td class="wrap">Coterra dividend-history and filing-derived data show a November 15, 2022 ex-dividend date with a $0.15 quarterly base dividend and $0.53 variable dividend, totaling $0.68. The input row fields show Massive as ca:0.15 ca:0.53 and yFinance as ca:0.68, which are economically equivalent representations of the same total distribution. The return difference is only +0.0104 percentage points, so both sources appear materially correct.</td>
+<td class="wrap">Coterra paid a $0.68 total distribution, composed of a $0.15 base dividend and $0.53 variable dividend, on the November 15, 2022 ex-dividend date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.coterra.com/Investors/dividend-history/default.aspx">https://investors.coterra.com/Investors/dividend-history/default.aspx</a></td>
+<td class="url"><a href="https://companiesmarketcap.com/sgd/coterra-energy/sec-reports-10q/0000858470-22-000042/">https://companiesmarketcap.com/sgd/coterra-energy/sec-reports-10q/0000858470-22-000042/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td>ca:0.15 ca:0.53</td>
+<td>ca:0.68</td>
+<td>0.01301</td>
+<td>0.013115</td>
+<td>0.000104</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">CTRA</td>
+<td class="frozen-col frozen-date">2023-03-15</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.023</td>
+<td class="wrap">Coterra's dividend-history page lists a March 15, 2023 ex-dividend date with a $0.20 quarterly base dividend and $0.37 special/variable dividend, totaling $0.57; Coterra filing data also summarizes the first-quarter 2023 total as $0.57. The input row fields show Massive as ca:0.2 ca:0.37 and yFinance as ca:0.57, which are economically equivalent. The small +0.0114 percentage-point return difference is not a meaningful corporate-action discrepancy.</td>
+<td class="wrap">Coterra paid a $0.57 total distribution, composed of a $0.20 base dividend and $0.37 special/variable dividend, on the March 15, 2023 ex-dividend date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.coterra.com/Investors/dividend-history/default.aspx">https://investors.coterra.com/Investors/dividend-history/default.aspx</a></td>
+<td class="url"><a href="https://investors.coterra.com/files/doc_financials/2023/q4/3d8abf62-5bf2-406f-b038-cf9f3df4b82d.pdf">https://investors.coterra.com/files/doc_financials/2023/q4/3d8abf62-5bf2-406f-b038-cf9f3df4b82d.pdf</a></td>
+<td>CLOSE_REVERSAL</td>
+<td>ca:0.2 ca:0.37</td>
+<td>ca:0.57</td>
+<td>-0.063437</td>
+<td>-0.063322</td>
+<td>0.000114</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ETN</td>
+<td class="frozen-col frozen-date">2024-02-01</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.075138</td>
+<td class="wrap">Eaton reported record fourth-quarter 2023 results on February 1, 2024, including record adjusted EPS and continued backlog growth, and issued a 2024 outlook. Transport Topics reported fourth-quarter profit jumped 31% year over year and adjusted EPS beat expectations. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +7.5138%, so the move is consistent with earnings news rather than a vendor adjustment issue.</td>
+<td class="wrap">Eaton shares rose after record fourth-quarter 2023 results, strong backlog growth, and 2024 guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.eaton.com/us/en-us/company/news-insights/news-releases/2024/eaton-reports-record-fourth-quarter-2023-results--with-continued.html">https://www.eaton.com/us/en-us/company/news-insights/news-releases/2024/eaton-reports-record-fourth-quarter-2023-results--with-continued.html</a></td>
+<td class="url"><a href="https://www.ttnews.com/articles/eaton-earnings-q4-2023">https://www.ttnews.com/articles/eaton-earnings-q4-2023</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.075138</td>
+<td>0.075138</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ETN</td>
+<td class="frozen-col frozen-date">2025-01-27</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.155645</td>
+<td class="wrap">Market coverage reported AI-exposed power and electrical-infrastructure stocks sold off sharply on January 27, 2025 after DeepSeek raised concerns about the scale of future AI data-center power demand. Invezz specifically noted Eaton declined sharply as a major electrical-infrastructure provider. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of -15.5645%, so the move is consistent with broad AI-infrastructure repricing rather than a vendor data problem.</td>
+<td class="wrap">Eaton sold off with AI power-infrastructure stocks after DeepSeek news raised questions about data-center power demand.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2025/01/27/power-stocks-plunge-as-ai-energy-needs-questioned-due-to-new-china-model.html">https://www.cnbc.com/2025/01/27/power-stocks-plunge-as-ai-energy-needs-questioned-due-to-new-china-model.html</a></td>
+<td class="url"><a href="https://invezz.com/news/2025/01/27/deepseeks-rise-triggers-declines-in-us-manufacturing-stocks-tied-to-ai-data-centers/">https://invezz.com/news/2025/01/27/deepseeks-rise-triggers-declines-in-us-manufacturing-stocks-tied-to-ai-data-centers/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.155645</td>
+<td>-0.155645</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ETN</td>
+<td class="frozen-col frozen-date">2025-11-05</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>DISTRIBUTION</td>
+<td>0.0</td>
+<td class="wrap">Eaton declared a $1.04 quarterly dividend payable November 21, 2025 to shareholders of record at the close of business on November 6, 2025. StockAnalysis lists the $1.04 dividend with November 6, 2025 ex/record timing. The input row fields show yFinance places ca:1.04 on November 5 while Massive does not; the following reviewed row shows Massive places the same $1.04 event on November 6. Because issuer and several dividend-history sources support November 6 timing, yFinance appears one trading day early for this row, though secondary sources are not perfectly unanimous.</td>
+<td class="wrap">No separate Eaton dividend event is supported for November 5, 2025; the $1.04 quarterly dividend is better supported on the November 6, 2025 record/ex-date timing.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.eaton.com/us/en-us/company/news-insights/news-releases/2025/eaton-declares-quarterly-dividend-payable-november-21--2025.html">https://www.eaton.com/us/en-us/company/news-insights/news-releases/2025/eaton-declares-quarterly-dividend-payable-november-21--2025.html</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/etn/dividend/">https://stockanalysis.com/stocks/etn/dividend/</a></td>
+<td>MS_EVENT_DATE_MISMATCH</td>
+<td></td>
+<td>ca:1.04</td>
+<td>0.020438</td>
+<td>0.023256</td>
+<td>0.002817</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ETN</td>
+<td class="frozen-col frozen-date">2025-11-06</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>DISTRIBUTION</td>
+<td>0.002698</td>
+<td class="wrap">Eaton's issuer release states the $1.04 quarterly dividend was payable November 21, 2025 to shareholders of record at the close of business on November 6, 2025, and StockAnalysis lists the $1.04 dividend on November 6, 2025. The input row math shows Massive includes ca:1.04 on November 6 while yFinance has no dividend/split entry; the -0.2649 percentage-point return difference closely offsets the prior day's yFinance-only dividend placement. Massive appears to place the dividend on the better-supported date, while yFinance appears one trading day early.</td>
+<td class="wrap">Eaton had a $1.04 quarterly cash dividend associated with the November 6, 2025 record/ex-date timing.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.eaton.com/us/en-us/company/news-insights/news-releases/2025/eaton-declares-quarterly-dividend-payable-november-21--2025.html">https://www.eaton.com/us/en-us/company/news-insights/news-releases/2025/eaton-declares-quarterly-dividend-payable-november-21--2025.html</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/etn/dividend/">https://stockanalysis.com/stocks/etn/dividend/</a></td>
+<td>YF_EVENT_DATE_MISMATCH</td>
+<td>ca:1.04</td>
+<td></td>
+<td>-0.01821</td>
+<td>-0.020859</td>
+<td>-0.002649</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">EXC</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Exelon dividend-history sources show the nearby 2023 quarterly dividend was on the May 12, 2023 ex-dividend date, not May 30. No split, spin-off, or other return-bearing corporate action was identified for May 30, 2023. The input row math shows no dividend/split mismatch and a -0.1904 percentage-point Massive/yFinance return difference that reverses on the next reviewed row, consistent with a close/timing-method difference rather than a corporate-action issue.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.exeloncorp.com/stock-information/dividends-splits">https://investors.exeloncorp.com/stock-information/dividends-splits</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/exc/dividend/">https://stockanalysis.com/stocks/exc/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.000635</td>
+<td>-0.001269</td>
+<td>-0.001904</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">EXC</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Exelon dividend-history sources show no dividend, split, spin-off, or other corporate-action event on May 31, 2023. The input row math shows no dividend/split mismatch and a +0.1918 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This is best explained as a close/timing-method reversal, with both sources economically acceptable.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.exeloncorp.com/stock-information/dividends-splits">https://investors.exeloncorp.com/stock-information/dividends-splits</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/exc/dividend/">https://stockanalysis.com/stocks/exc/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.005962</td>
+<td>0.00788</td>
+<td>0.001918</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">EXC</td>
+<td class="frozen-col frozen-date">2025-07-24</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Exelon dividend-history sources show 2025 dividend ex-dates on May 12, August 11, and November 10 around this period, with no return-bearing corporate action on July 24, 2025. The input row math shows no dividend/split mismatch and only a +0.0115 percentage-point Massive/yFinance return difference, which reverses on the next reviewed row. Both sources are economically aligned.</td>
+<td class="wrap">No material corporate-action event identified for the row; the tiny vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.exeloncorp.com/stock-information/dividends-splits">https://investors.exeloncorp.com/stock-information/dividends-splits</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/exc/dividend/">https://stockanalysis.com/stocks/exc/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.005633</td>
+<td>0.005748</td>
+<td>0.000115</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">EXC</td>
+<td class="frozen-col frozen-date">2025-07-25</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Exelon dividend-history sources show no dividend, split, spin-off, or other return-bearing corporate action on July 25, 2025. The input row math shows no dividend/split mismatch and only a -0.0115 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This supports a close/timing-method reversal rather than an economic data issue.</td>
+<td class="wrap">No material corporate-action event identified for the row; the tiny vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.exeloncorp.com/stock-information/dividends-splits">https://investors.exeloncorp.com/stock-information/dividends-splits</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/exc/dividend/">https://stockanalysis.com/stocks/exc/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.005831</td>
+<td>0.005716</td>
+<td>-0.000115</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">EXC</td>
+<td class="frozen-col frozen-date">2025-10-24</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Exelon dividend-history sources show no dividend, split, spin-off, or other return-bearing corporate action on October 24, 2025; the next listed dividend event was November 10, 2025. The input row math shows no dividend/split mismatch and only a +0.0105 percentage-point Massive/yFinance return difference, which reverses on the next reviewed row. Both sources are economically acceptable.</td>
+<td class="wrap">No material corporate-action event identified for the row; the tiny vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.exeloncorp.com/stock-information/dividends-splits">https://investors.exeloncorp.com/stock-information/dividends-splits</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/exc/dividend/">https://stockanalysis.com/stocks/exc/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.009139</td>
+<td>0.009244</td>
+<td>0.000105</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">EXC</td>
+<td class="frozen-col frozen-date">2025-10-27</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Exelon dividend-history sources show no dividend, split, spin-off, or other return-bearing corporate action on October 27, 2025; the next listed dividend event was November 10, 2025. The input row math shows no dividend/split mismatch and only a -0.0104 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This is a non-actionable close/timing-method reversal.</td>
+<td class="wrap">No material corporate-action event identified for the row; the tiny vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.exeloncorp.com/stock-information/dividends-splits">https://investors.exeloncorp.com/stock-information/dividends-splits</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/exc/dividend/">https://stockanalysis.com/stocks/exc/dividend/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.000729</td>
+<td>0.000624</td>
+<td>-0.000104</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">FCX</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Freeport-McMoRan dividend-history sources show no dividend, split, spin-off, or other return-bearing corporate action on May 30, 2023; the adjacent quarterly dividend dates were April 13 and July 13. The input row math shows no dividend/split mismatch and a -0.6040 percentage-point Massive/yFinance return difference that reverses on the next reviewed row. This is best explained as a close/timing-method reversal rather than a corporate-action issue.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
+<td class="url"><a href="https://companiesmarketcap.com/freeport-mcmoran/dividends/">https://companiesmarketcap.com/freeport-mcmoran/dividends/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.009491</td>
+<td>-0.01553</td>
+<td>-0.00604</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">FCX</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Freeport-McMoRan dividend-history sources show no dividend, split, spin-off, or other return-bearing corporate action on May 31, 2023. The input row math shows no dividend/split mismatch and a +0.6117 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This supports a non-actionable close/timing-method reversal, with both vendors economically acceptable.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
+<td class="url"><a href="https://companiesmarketcap.com/freeport-mcmoran/dividends/">https://companiesmarketcap.com/freeport-mcmoran/dividends/</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.002904</td>
+<td>0.003213</td>
+<td>0.006117</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">FCX</td>
+<td class="frozen-col frozen-date">2025-09-24</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.169533</td>
+<td class="wrap">Reuters coverage reported Freeport-McMoRan declared force majeure at the Grasberg mine in Indonesia and lowered expected third-quarter copper and gold sales after a serious mud-rush incident. AP also reported Freeport shares tumbled after the company said the mine accident would significantly reduce production and keep much of the operation shut into 2026. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of -16.9533%, so the large move is explained by real operational news rather than vendor data.</td>
+<td class="wrap">Freeport-McMoRan shares fell sharply after the Grasberg mine incident, force majeure declaration, and reduced copper/gold sales outlook.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/freeportmcmoran-expects-lower-consolidated-sales-for-copper-gold-in-third-quarter-4253357">https://www.investing.com/news/stock-market-news/freeportmcmoran-expects-lower-consolidated-sales-for-copper-gold-in-third-quarter-4253357</a></td>
+<td class="url"><a href="https://apnews.com/article/d6c8135605cc2445d10ec9c313c0d640">https://apnews.com/article/d6c8135605cc2445d10ec9c313c0d640</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.169533</td>
+<td>-0.169533</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">GM</td>
+<td class="frozen-col frozen-date">2024-10-22</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.098099</td>
+<td class="wrap">GM reported third-quarter 2024 revenue of $48.8 billion, net income of $3.1 billion, and updated full-year guidance. CNBC reported GM shares had their best day since 2020 after topping expectations and raising key 2024 guidance targets. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +9.8099%, so the large move is consistent with earnings/guidance news rather than a vendor data issue.</td>
+<td class="wrap">GM shares rallied after third-quarter 2024 results beat expectations and management raised 2024 guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.prnewswire.com/news-releases/gm-releases-2024-third-quarter-results-and-updates-full-year-guidance-302282403.html">https://www.prnewswire.com/news-releases/gm-releases-2024-third-quarter-results-and-updates-full-year-guidance-302282403.html</a></td>
+<td class="url"><a href="https://www.cnbc.com/2024/10/22/general-motors-gm-earnings-q3-2024.html">https://www.cnbc.com/2024/10/22/general-motors-gm-earnings-q3-2024.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.098099</td>
+<td>0.098099</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">GM</td>
+<td class="frozen-col frozen-date">2025-10-21</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.148621</td>
+<td class="wrap">Reuters coverage reported GM raised its 2025 core profit forecast and shares surged about 15% as investors reacted to third-quarter results and stronger 2026 signals. Axios also reported GM raised its full-year outlook and reduced the expected tariff hit. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +14.8621%, so the move is explained by real earnings/outlook news with both vendors aligned.</td>
+<td class="wrap">GM shares surged after third-quarter 2025 results, raised 2025 profit guidance, and a better tariff outlook.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/general-motors-raises-2025-core-profit-forecast-4298661">https://www.investing.com/news/stock-market-news/general-motors-raises-2025-core-profit-forecast-4298661</a></td>
+<td class="url"><a href="https://www.axios.com/2025/10/21/gm-tariffs-shares-outlook">https://www.axios.com/2025/10/21/gm-tariffs-shares-outlook</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.148621</td>
+<td>0.148621</td>
+<td></td>
+<td>11</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ILMN</td>
+<td class="frozen-col frozen-date">2022-01-11</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.169813</td>
+<td class="wrap">Contemporaneous coverage reported Illumina shares jumped after the company issued a strong preliminary fourth-quarter 2021 revenue update and gave 2022 non-GAAP EPS guidance above Wall Street expectations. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +16.9813%. The large positive return is therefore consistent with real company guidance/news rather than a vendor adjustment issue.</td>
+<td class="wrap">Illumina shares rallied after strong preliminary revenue results and favorable 2022 guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.fool.com/investing/2022/01/11/why-illumina-stock-just-jumped-95/">https://www.fool.com/investing/2022/01/11/why-illumina-stock-just-jumped-95/</a></td>
+<td class="url"><a href="https://www.stocktitan.net/news/ILMN/illumina-announces-preliminary-revenue-for-fiscal-year-2021-and-q4-20u5dvj0voee.html">https://www.stocktitan.net/news/ILMN/illumina-announces-preliminary-revenue-for-fiscal-year-2021-and-q4-20u5dvj0voee.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.169813</td>
+<td>0.169813</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ILMN</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Illumina dividend-history sources show no dividend history, and no split, spin-off, or other return-bearing corporate action was identified for May 30, 2023. The input row math shows no dividend/split mismatch and a -1.1971 percentage-point Massive/yFinance return difference that reverses on the next reviewed row. This supports a close/timing-method reversal rather than an economically meaningful corporate-action discrepancy.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/ilmn/dividend/">https://stockanalysis.com/stocks/ilmn/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/ILMN/dividend">https://www.slickcharts.com/symbol/ILMN/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.004926</td>
+<td>-0.007045</td>
+<td>-0.011971</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ILMN</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Illumina dividend-history sources show no dividend history, and no split, spin-off, or other return-bearing corporate action was identified for May 31, 2023. The input row math shows no dividend/split mismatch and a +1.2043 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This is best classified as a non-actionable close/timing-method reversal.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/ilmn/dividend/">https://stockanalysis.com/stocks/ilmn/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/ILMN/dividend">https://www.slickcharts.com/symbol/ILMN/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.001041</td>
+<td>0.011002</td>
+<td>0.012043</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ILMN</td>
+<td class="frozen-col frozen-date">2025-10-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.247753</td>
+<td class="wrap">Illumina reported third-quarter 2025 financial results after market close on October 30, 2025, saying results exceeded the high end of guidance for revenue and earnings. StockStory coverage described revenue above expectations and cost discipline driving outperformance. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +24.7753%, so the large move is explained by earnings news with both vendors aligned.</td>
+<td class="wrap">Illumina shares rallied after third-quarter 2025 results exceeded guidance and market expectations.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investor.illumina.com/news/press-release-details/2025/Illumina-Reports-Financial-Results-for-Third-Quarter-of-Fiscal-Year-2025/default.aspx">https://investor.illumina.com/news/press-release-details/2025/Illumina-Reports-Financial-Results-for-Third-Quarter-of-Fiscal-Year-2025/default.aspx</a></td>
+<td class="url"><a href="https://stockstory.org/us/stocks/nasdaq/ilmn/news/earnings-call/ilmn-q3-deep-dive-clinical-sequencing-momentum-and-cost-discipline-drive-outperformance">https://stockstory.org/us/stocks/nasdaq/ilmn/news/earnings-call/ilmn-q3-deep-dive-clinical-sequencing-momentum-and-cost-discipline-drive-outperformance</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.247753</td>
+<td>0.247753</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">IP</td>
+<td class="frozen-col frozen-date">2024-10-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.132776</td>
+<td class="wrap">International Paper reported third-quarter 2024 results on October 31, 2024. MarketBeat and Zacks both reported adjusted EPS of $0.44, well above consensus, with Zacks noting earnings topped estimates despite lower year-over-year volumes. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +13.2776%, so the large move is consistent with earnings news rather than a vendor adjustment issue.</td>
+<td class="wrap">International Paper shares rallied after third-quarter 2024 adjusted earnings beat expectations.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.marketbeat.com/earnings/reports/2024-10-31-international-paper-stock/">https://www.marketbeat.com/earnings/reports/2024-10-31-international-paper-stock/</a></td>
+<td class="url"><a href="https://www.zacks.com/stock/news/2362089/international-paper-q3-earnings-top-estimates-down-yy-on-low-volumes">https://www.zacks.com/stock/news/2362089/international-paper-q3-earnings-top-estimates-down-yy-on-low-volumes</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.132776</td>
+<td>0.132776</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">IQV</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">IQVIA dividend-history sources show no dividend history, and no split, spin-off, or other return-bearing corporate action was identified for May 30, 2023. The input row math shows no dividend/split mismatch and a -1.5041 percentage-point Massive/yFinance return difference that reverses on the next reviewed row. This supports a close/timing-method reversal rather than an economically meaningful data issue.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses on the adjacent reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/iqv/dividend/">https://stockanalysis.com/stocks/iqv/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/IQV/dividend">https://www.slickcharts.com/symbol/IQV/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.01103</td>
+<td>-0.004011</td>
+<td>-0.015041</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">IQV</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">IQVIA dividend-history sources show no dividend history, and no split, spin-off, or other return-bearing corporate action was identified for May 31, 2023. The input row math shows no dividend/split mismatch and a +1.4747 percentage-point Massive/yFinance return difference that offsets the prior reviewed row. This is best classified as a non-actionable close/timing-method reversal.</td>
+<td class="wrap">No material corporate-action event identified for the row; the vendor return difference reverses the prior reviewed date.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/iqv/dividend/">https://stockanalysis.com/stocks/iqv/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/IQV/dividend">https://www.slickcharts.com/symbol/IQV/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.023506</td>
+<td>-0.008759</td>
+<td>0.014747</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">IQV</td>
+<td class="frozen-col frozen-date">2024-02-14</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.130998</td>
+<td class="wrap">IQVIA reported fourth-quarter and full-year 2023 results on February 14, 2024 and issued 2024 guidance. Investing.com coverage highlighted solid fourth-quarter performance, robust R&amp;D Solutions growth, and strong bookings. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of +13.0998%, so the large move is explained by earnings/news with both vendors aligned.</td>
+<td class="wrap">IQVIA shares rallied after fourth-quarter 2023 results, 2024 guidance, and strong R&amp;D Solutions bookings.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1478242/000115752324000236/a53896009ex99_1.htm">https://www.sec.gov/Archives/edgar/data/1478242/000115752324000236/a53896009ex99_1.htm</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/earnings-call-iqvia-reports-robust-rd-segment-growth-in-q4-93CH-3304194">https://www.investing.com/news/stock-market-news/earnings-call-iqvia-reports-robust-rd-segment-growth-in-q4-93CH-3304194</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.130998</td>
+<td>0.130998</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">IQV</td>
+<td class="frozen-col frozen-date">2026-02-03</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>NEWS</td>
+<td>-0.118756</td>
+<td class="wrap">IQVIA reported fourth-quarter and full-year 2025 results and issued 2026 guidance. Market commentary attributed the post-report sell-off to 2026 adjusted EPS guidance below consensus despite a modest Q4 EPS beat, with higher interest expense pressuring the outlook. The input row fields show no corporate-action mismatch and identical Massive and yFinance returns of -11.8756%, so the move is consistent with earnings/guidance news rather than a vendor data issue.</td>
+<td class="wrap">IQVIA shares fell after fourth-quarter 2025 results and 2026 guidance that disappointed investors.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.nasdaq.com/press-release/iqvia-reports-fourth-quarter-and-full-year-2025-results-issues-full-year-2026">https://www.nasdaq.com/press-release/iqvia-reports-fourth-quarter-and-full-year-2025-results-issues-full-year-2026</a></td>
+<td class="url"><a href="https://www.tikr.com/blog/iqvia-stock-dropped-8-on-weak-eps-guidance-heres-what-the-numbers-say-in-2026">https://www.tikr.com/blog/iqvia-stock-dropped-8-on-weak-eps-guidance-heres-what-the-numbers-say-in-2026</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.118756</td>
+<td>-0.118756</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">JCI</td>
+<td class="frozen-col frozen-date">2023-08-02</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.092532</td>
+<td class="wrap">Johnson Controls reported fiscal Q3 2023 results on 2023-08-02, including adjusted EPS of $1.03 and organic sales growth, but the market move appears tied to earnings-quality and outlook interpretation rather than a corporate action. The input row math shows Massive and yFinance both report the same -9.2532% return, with no dividend or split event in either input row field. That supports a real news-driven price move rather than a vendor data error.</td>
+<td class="wrap">Johnson Controls announced fiscal third-quarter 2023 earnings on 2023-08-02. The release and contemporaneous financial-news coverage describe operating results and guidance context sufficient to explain a large same-direction market move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy23/johnson-controls-q323-earnings-release.pdf">https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy23/johnson-controls-q323-earnings-release.pdf</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/earnings-call-johnson-controls-beats-q3-estimates-shares-rise-93CH-3136514">https://www.investing.com/news/stock-market-news/earnings-call-johnson-controls-beats-q3-estimates-shares-rise-93CH-3136514</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.092532</td>
+<td>-0.092532</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">JCI</td>
+<td class="frozen-col frozen-date">2024-05-01</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.070693</td>
+<td class="wrap">Johnson Controls reported fiscal Q2 2024 results on 2024-05-01. Independent market coverage attributed the stock decline to quarterly results that missed expectations and reduced near-term guidance. The input row math shows Massive and yFinance both report the same -7.0693% return and neither input row field shows a dividend or split, so this is best treated as a real earnings-related move, not a corporate-action reconciliation issue.</td>
+<td class="wrap">Johnson Controls released fiscal second-quarter 2024 earnings on 2024-05-01. Market coverage described the drop as a reaction to the earnings release and guidance, with no corresponding dividend or split event.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy24/johnson-controls-q224-earnings-release.pdf">https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy24/johnson-controls-q224-earnings-release.pdf</a></td>
+<td class="url"><a href="https://www.investorplace.com/2024/05/why-is-johnson-controls-jci-stock-down-8-today/">https://www.investorplace.com/2024/05/why-is-johnson-controls-jci-stock-down-8-today/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.070693</td>
+<td>-0.070693</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">JCI</td>
+<td class="frozen-col frozen-date">2024-11-06</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.088298</td>
+<td class="wrap">Johnson Controls reported fiscal Q4 2024 results on 2024-11-06, with adjusted EPS and revenue above consensus in independent earnings coverage. The input row math shows Massive and yFinance both report the same +8.8298% return and neither input row field contains a dividend or split. The move is therefore consistent with a real earnings/news event shared by both vendors.</td>
+<td class="wrap">Johnson Controls announced fiscal fourth-quarter and full-year 2024 results on 2024-11-06. Independent coverage reported an earnings and revenue beat, providing real-world support for the positive price move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy24/johnson-controls-q424-earnings-release.pdf">https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy24/johnson-controls-q424-earnings-release.pdf</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/johnson-controls-jci-q4-earnings-and-revenues-beat-estimates">https://www.nasdaq.com/articles/johnson-controls-jci-q4-earnings-and-revenues-beat-estimates</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.088298</td>
+<td>0.088298</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">JCI</td>
+<td class="frozen-col frozen-date">2025-02-05</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.112822</td>
+<td class="wrap">Johnson Controls reported fiscal Q1 2025 results on 2025-02-05 and raised its full-year adjusted EPS outlook. Independent market coverage identified JCI as an earnings mover. The input row math shows Massive and yFinance both report the same +11.2822% return, with no dividend or split in either input row field, so the high score is explained by a real earnings and guidance reaction rather than a data discrepancy.</td>
+<td class="wrap">Johnson Controls released fiscal first-quarter 2025 results on 2025-02-05 and increased full-year adjusted EPS guidance. That earnings/news context supports the large positive same-vendor return.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy25/johnson-controls-q125-earnings-release.pdf">https://www.johnsoncontrols.com/-/media/jci/corp/media/news/files/earnings/fy25/johnson-controls-q125-earnings-release.pdf</a></td>
+<td class="url"><a href="https://www.investors.com/news/stock-market-rallies-palantir-spotify-johnson-controls-lead-earnings-movers/">https://www.investors.com/news/stock-market-rallies-palantir-spotify-johnson-controls-lead-earnings-movers/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.112822</td>
+<td>0.112822</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">JCI</td>
+<td class="frozen-col frozen-date">2025-09-22</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.00368</td>
+<td class="wrap">Johnson Controls announced a quarterly dividend of $0.40 per share, payable 2025-10-17 to shareholders of record on 2025-09-22. StockAnalysis lists a $0.40 ex-dividend amount on 2025-09-22. The input row math shows Massive includes ca:0.4 and yFinance has no event; the return difference of about 0.3714% matches the expected dividend impact of about 0.3680%. Massive is therefore the better-supported source for this row.</td>
+<td class="wrap">Johnson Controls increased its quarterly dividend to $0.40 per share with record date 2025-09-22. Independent dividend history also shows a $0.40 ex-dividend event on 2025-09-22.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.johnsoncontrols.com/media-center/news/Press-Releases/2025/09/10/Johnson-Controls-increases-quarterly-dividend">https://www.johnsoncontrols.com/media-center/news/Press-Releases/2025/09/10/Johnson-Controls-increases-quarterly-dividend</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/jci/dividend/">https://stockanalysis.com/stocks/jci/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.4</td>
+<td></td>
+<td>0.009234</td>
+<td>0.00552</td>
+<td>-0.003714</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">JCI</td>
+<td class="frozen-col frozen-date">2025-12-22</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.003346</td>
+<td class="wrap">Johnson Controls announced a quarterly dividend of $0.40 per share, payable 2026-01-16 to shareholders of record on 2025-12-22. StockAnalysis lists a $0.40 ex-dividend amount on 2025-12-22. The input row math shows Massive includes ca:0.4 and yFinance has no event; the return difference of about 0.3370% matches the expected dividend impact of about 0.3346%. Massive is therefore the better-supported source for this row.</td>
+<td class="wrap">Johnson Controls declared a $0.40 quarterly dividend with record date 2025-12-22. Independent dividend history also shows a $0.40 ex-dividend event on 2025-12-22.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.johnsoncontrols.com/media-center/news/Press-Releases/2025/12/10/Johnson-Controls-announces-quarterly-dividend">https://www.johnsoncontrols.com/media-center/news/Press-Releases/2025/12/10/Johnson-Controls-announces-quarterly-dividend</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/jci/dividend/">https://stockanalysis.com/stocks/jci/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.4</td>
+<td></td>
+<td>0.006967</td>
+<td>0.003597</td>
+<td>-0.00337</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">LYB</td>
+<td class="frozen-col frozen-date">2022-06-03</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.055911</td>
+<td class="wrap">LyondellBasell announced both a $5.20 special dividend and a $1.19 quarterly dividend, each with ex-dividend date 2022-06-03, record date 2022-06-06, and payment date 2022-06-13. Massive represents the event as separate ca:1.19 and ca:5.2 amounts, while yFinance represents the same economic event as one ca:6.39 amount. The input row math shows both vendors include the dividend impact, with only a small residual return difference of about 0.0486%, so this is best classified as a representation or calculation-basis difference rather than a missing event.</td>
+<td class="wrap">LyondellBasell declared a $5.20 special dividend and a $1.19 regular quarterly dividend, both tied to the 2022-06-03 ex-dividend date. The combined real-world cash amount was $6.39 per share.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.lyondellbasell.com/en/news-events/corporate--financial-news/lyondellbasell-announces-%245.20-special-dividend-and-increases-quarterly-dividend-by-5-percent">https://www.lyondellbasell.com/en/news-events/corporate--financial-news/lyondellbasell-announces-%245.20-special-dividend-and-increases-quarterly-dividend-by-5-percent</a></td>
+<td class="url"><a href="https://www.streetinsider.com/dr/news.php?id=20141067">https://www.streetinsider.com/dr/news.php?id=20141067</a></td>
+<td>EVENT_SOURCE_MISMATCH</td>
+<td>ca:1.19 ca:5.2</td>
+<td>ca:6.39</td>
+<td>-0.013898</td>
+<td>-0.013412</td>
+<td>0.000486</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">MRK</td>
+<td class="frozen-col frozen-date">2021-10-01</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.083744</td>
+<td class="wrap">Merck and Ridgeback announced on 2021-10-01 that molnupiravir reduced hospitalization or death risk by about 50% in an interim Phase 3 analysis. Independent market coverage reported the same clinical-trial development. The input row math shows Massive and yFinance both report the same +8.3744% return, with no dividend or split in either input row field, supporting a real news-driven price move rather than a vendor data issue.</td>
+<td class="wrap">Merck announced strongly positive interim Phase 3 data for molnupiravir on 2021-10-01, creating a real-world news catalyst for the stock move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.merck.com/news/merck-and-ridgebacks-investigational-oral-antiviral-molnupiravir-reduced-the-risk-of-hospitalization-or-death-by-approximately-50-percent-compared-to-placebo-for-patients-with-mild-or-moderat/">https://www.merck.com/news/merck-and-ridgebacks-investigational-oral-antiviral-molnupiravir-reduced-the-risk-of-hospitalization-or-death-by-approximately-50-percent-compared-to-placebo-for-patients-with-mild-or-moderat/</a></td>
+<td class="url"><a href="https://www.cnbc.com/2021/10/01/merck-to-seek-emergency-authorization-for-oral-covid-19-treatment.html">https://www.cnbc.com/2021/10/01/merck-to-seek-emergency-authorization-for-oral-covid-19-treatment.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.083744</td>
+<td>0.083744</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">MRK</td>
+<td class="frozen-col frozen-date">2021-11-05</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.09863</td>
+<td class="wrap">Pfizer announced on 2021-11-05 that its COVID antiviral pill reduced hospitalization or death risk by 89%, a materially stronger result than Merck's earlier molnupiravir interim result. Independent coverage explicitly compared Pfizer's result with Merck's prior 50% figure. The input row math shows Massive and yFinance both report the same -9.8630% return, with no dividend or split in either input row field, supporting a real competitive-news price move.</td>
+<td class="wrap">Pfizer released strong Paxlovid trial data on 2021-11-05, creating competitive pressure on Merck's molnupiravir opportunity and explaining the sharp MRK selloff.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.statnews.com/2021/11/05/experimental-pfizer-pill-prevents-covid-hospitalizations-and-deaths/">https://www.statnews.com/2021/11/05/experimental-pfizer-pill-prevents-covid-hospitalizations-and-deaths/</a></td>
+<td class="url"><a href="https://www.axios.com/2021/11/05/pfizer-pill-cuts-covid-death-hospitalization-risk">https://www.axios.com/2021/11/05/pfizer-pill-cuts-covid-death-hospitalization-risk</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.09863</td>
+<td>-0.09863</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">MRK</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Independent dividend-history sources do not show a Merck dividend or split event on 2023-05-30, and neither input row field contains a dividend or split. The input row math shows a yFinance-versus-Massive return difference of about -0.8283% that is almost fully reversed by the opposite-sign difference on the next reviewed row. This is best treated as a two-day close/price timing reversal rather than an economically meaningful corporate-action issue.</td>
+<td class="wrap">No real-world corporate-action event was identified for Merck on 2023-05-30. The discrepancy pattern is consistent with a short-lived close or timing reversal.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/mrk/dividend/">https://stockanalysis.com/stocks/mrk/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/MRK/dividend">https://www.slickcharts.com/symbol/MRK/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.008823</td>
+<td>-0.017106</td>
+<td>-0.008283</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">MRK</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Independent dividend-history sources do not show a Merck dividend or split event on 2023-05-31, and neither input row field contains a dividend or split. The input row math shows a yFinance-versus-Massive return difference of about +0.8452%, which offsets the prior reviewed row's negative difference. This is best treated as the reversal leg of a two-day close/price timing difference rather than a corporate-action issue.</td>
+<td class="wrap">No real-world corporate-action event was identified for Merck on 2023-05-31. The discrepancy pattern reverses the prior reviewed row.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/mrk/dividend/">https://stockanalysis.com/stocks/mrk/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/MRK/dividend">https://www.slickcharts.com/symbol/MRK/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.002907</td>
+<td>0.011359</td>
+<td>0.008452</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">MRK</td>
+<td class="frozen-col frozen-date">2024-07-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.098059</td>
+<td class="wrap">Merck reported Q2 2024 results on 2024-07-30. Independent market coverage reported that shares fell about 9% as investors reacted to lighter-than-expected Gardasil sales and reduced adjusted EPS guidance despite strong demand for other drugs. The input row math shows Massive and yFinance both report the same -9.8059% return, with no dividend or split in either input row field, supporting a real earnings/news move rather than a data discrepancy.</td>
+<td class="wrap">Merck's 2024-07-30 earnings release and market reaction produced a large negative same-vendor return, tied to Gardasil sales concerns and adjusted EPS guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.merck.com/news/merck-announces-second-quarter-2024-financial-results/">https://www.merck.com/news/merck-announces-second-quarter-2024-financial-results/</a></td>
+<td class="url"><a href="https://www.cnbc.com/2024/07/30/merck-mrk-earnings-q2-2024.html">https://www.cnbc.com/2024/07/30/merck-mrk-earnings-q2-2024.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.098059</td>
+<td>-0.098059</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">PWR</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Independent dividend-history sources show Quanta's next 2023 dividend ex-date as 2023-06-30, not 2023-05-30, and the input row fields contain no dividend or split event. The input row math shows a return difference of about +0.9971% that is substantially reversed by the opposite-sign difference on the next reviewed row. This is best treated as a two-day close/price timing reversal rather than a corporate-action issue.</td>
+<td class="wrap">No real-world corporate-action event was identified for Quanta Services on 2023-05-30. The discrepancy pattern is consistent with a short-lived close or timing reversal.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/pwr/dividend/">https://stockanalysis.com/stocks/pwr/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/PWR/dividend">https://www.slickcharts.com/symbol/PWR/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.031236</td>
+<td>0.041207</td>
+<td>0.009971</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">PWR</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Independent dividend-history sources show no Quanta dividend or split event on 2023-05-31, and the input row fields contain no dividend or split event. The input row math shows a return difference of about -0.9478%, which offsets the prior reviewed row's positive difference. This is best treated as the reversal leg of a two-day close/price timing difference rather than a corporate-action issue.</td>
+<td class="wrap">No real-world corporate-action event was identified for Quanta Services on 2023-05-31. The discrepancy pattern reverses the prior reviewed row.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/pwr/dividend/">https://stockanalysis.com/stocks/pwr/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/PWR/dividend">https://www.slickcharts.com/symbol/PWR/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>-0.010338</td>
+<td>-0.019816</td>
+<td>-0.009478</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">PWR</td>
+<td class="frozen-col frozen-date">2025-01-27</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.183225</td>
+<td class="wrap">On 2025-01-27, DeepSeek-related concerns triggered a broad selloff in AI-linked infrastructure, power, and data-center exposure. Independent coverage reported that power and infrastructure companies exposed to AI collectively sold off as investors questioned AI energy demand. The input row math shows Massive and yFinance both report the same -18.3225% return, with no dividend or split in either input row field, supporting a real sector/news shock rather than a data discrepancy.</td>
+<td class="wrap">DeepSeek-related AI spending and power-demand concerns triggered a broad selloff on 2025-01-27 in AI infrastructure and power-exposed stocks, including Quanta Services.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2025/01/27/power-stocks-plunge-as-ai-energy-needs-questioned-due-to-new-china-model.html">https://www.cnbc.com/2025/01/27/power-stocks-plunge-as-ai-energy-needs-questioned-due-to-new-china-model.html</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/tech-stock-selloff-deepens-as-deepseek-triggers-ai-rethink-3833347">https://www.investing.com/news/stock-market-news/tech-stock-selloff-deepens-as-deepseek-triggers-ai-rethink-3833347</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.183225</td>
+<td>-0.183225</td>
+<td></td>
+<td>11</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">PWR</td>
+<td class="frozen-col frozen-date">2026-04-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.157763</td>
+<td class="wrap">Quanta reported Q1 2026 results on 2026-04-30, including adjusted EPS of $2.68, record backlog of $48.5 billion, and raised full-year guidance. Independent earnings coverage reported that the stock rose sharply on the earnings beat and raised outlook. The input row math shows Massive and yFinance both report the same +15.7763% return, with no dividend or split in either input row field, supporting a real earnings/news move rather than a data discrepancy.</td>
+<td class="wrap">Quanta Services reported strong Q1 2026 results on 2026-04-30, raised 2026 guidance, and reported record backlog, explaining the large positive price move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.quantaservices.com/news-events/press-releases/detail/396/quanta-services-reports-first-quarter-2026-results">https://investors.quantaservices.com/news-events/press-releases/detail/396/quanta-services-reports-first-quarter-2026-results</a></td>
+<td class="url"><a href="https://www.investing.com/news/earnings/quanta-services-soars-10-on-earnings-beat-and-raised-outlook-93CH-4648830">https://www.investing.com/news/earnings/quanta-services-soars-10-on-earnings-beat-and-raised-outlook-93CH-4648830</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.157763</td>
+<td>0.157763</td>
+<td></td>
+<td>6</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">QCOM</td>
+<td class="frozen-col frozen-date">2021-11-04</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.127311</td>
+<td class="wrap">Qualcomm reported fiscal Q4 2021 results and gave strong fiscal Q1 2022 guidance. Independent market coverage reported that Qualcomm stock rose about 13% after the earnings beat. The input row math shows Massive and yFinance both report the same +12.7311% return, with no dividend or split in either input row field, supporting a real earnings/news move rather than a data discrepancy.</td>
+<td class="wrap">Qualcomm's fiscal Q4 2021 earnings beat and strong guidance on 2021-11-04 explain the large positive stock move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://s204.q4cdn.com/645488518/files/doc_financials/2021/q4/FY-2021-4th-Quarter-Earnings-Release.pdf">https://s204.q4cdn.com/645488518/files/doc_financials/2021/q4/FY-2021-4th-Quarter-Earnings-Release.pdf</a></td>
+<td class="url"><a href="https://www.cnbc.com/2021/11/04/qualcomm-stock-up-13percent-after-q4-2021-earnings-beat.html">https://www.cnbc.com/2021/11/04/qualcomm-stock-up-13percent-after-q4-2021-earnings-beat.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.127311</td>
+<td>0.127311</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">QCOM</td>
+<td class="frozen-col frozen-date">2023-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>UNKNOWN</td>
+<td>0.0</td>
+<td class="wrap">Independent dividend-history sources show Qualcomm's $0.80 dividend on the next reviewed date, 2023-05-31, not on 2023-05-30, and neither input row field contains a dividend or split for this row. The input row math shows a return difference of about +1.0557% that is substantially reversed by the opposite-sign difference on the next reviewed row. This is best treated as a close/price timing reversal rather than a corporate-action issue.</td>
+<td class="wrap">No real-world corporate-action event was identified for Qualcomm on 2023-05-30. The discrepancy pattern is consistent with a short-lived close or timing reversal.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/qcom/dividend/">https://stockanalysis.com/stocks/qcom/dividend/</a></td>
+<td class="url"><a href="https://www.slickcharts.com/symbol/QCOM/dividend">https://www.slickcharts.com/symbol/QCOM/dividend</a></td>
+<td>CLOSE_REVERSAL</td>
+<td></td>
+<td></td>
+<td>0.040643</td>
+<td>0.051201</td>
+<td>0.010557</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">QCOM</td>
+<td class="frozen-col frozen-date">2023-05-31</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.006967</td>
+<td class="wrap">Independent dividend-history sources show a Qualcomm $0.80 dividend with ex-dividend date 2023-05-31. Both Massive and yFinance include ca:0.8 in the input row fields, and the input row math shows the dividend impact is present in both return calculations. The remaining return difference of about -1.0057% offsets the prior reviewed row's positive difference, so this row is best treated as the reversal leg of a close/price timing difference, not a missing dividend event.</td>
+<td class="wrap">Qualcomm had a $0.80 quarterly dividend on 2023-05-31, and both vendors include the dividend event. The remaining discrepancy reverses the prior reviewed row.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/qcom/dividend/">https://stockanalysis.com/stocks/qcom/dividend/</a></td>
+<td class="url"><a href="https://www.investing.com/equities/qualcomm-inc-dividends">https://www.investing.com/equities/qualcomm-inc-dividends</a></td>
+<td>CLOSE_REVERSAL</td>
+<td>ca:0.8</td>
+<td>ca:0.8</td>
+<td>-0.005481</td>
+<td>-0.015538</td>
+<td>-0.010057</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">QCOM</td>
+<td class="frozen-col frozen-date">2025-04-09</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.151853</td>
+<td class="wrap">U.S. stocks rallied sharply on 2025-04-09 after the announcement of a 90-day pause on many reciprocal tariffs, with technology and semiconductor-related shares rebounding from prior tariff-driven losses. The input row math shows Massive and yFinance both report the same +15.1853% return and neither input row field contains a dividend or split. The move is therefore best explained by a broad market and semiconductor relief rally rather than a corporate-action discrepancy.</td>
+<td class="wrap">Qualcomm participated in the broad 2025-04-09 market rally following the tariff-pause announcement, producing a large same-vendor positive return.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.npr.org/2025/04/09/nx-s1-5357405/stocks-tariffs-china-eu-trump-trade-war">https://www.npr.org/2025/04/09/nx-s1-5357405/stocks-tariffs-china-eu-trump-trade-war</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/biggest-market-rally-years-fueled-tariff-pause">https://www.nasdaq.com/articles/biggest-market-rally-years-fueled-tariff-pause</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.151853</td>
+<td>0.151853</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">QCOM</td>
+<td class="frozen-col frozen-date">2025-10-27</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.110927</td>
+<td class="wrap">Qualcomm announced AI200 and AI250 data-center AI inference accelerators on 2025-10-27, positioning the products against Nvidia and AMD in AI infrastructure. Independent technology coverage described the new chips and Qualcomm's plan to enter the data-center AI accelerator market. The input row math shows Massive and yFinance both report the same +11.0927% return, with no dividend or split in either input row field, supporting a real AI-chip news move.</td>
+<td class="wrap">Qualcomm announced new data-center AI accelerator products on 2025-10-27, creating a real-world catalyst for the stock's large positive move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.axios.com/2025/10/27/qualcomm-nvidia-amd-data-center">https://www.axios.com/2025/10/27/qualcomm-nvidia-amd-data-center</a></td>
+<td class="url"><a href="https://www.tomshardware.com/tech-industry/artificial-intelligence/qualcomm-unveils-ai200-and-ai250-ai-inference-accelerators-hexagon-takes-on-amd-and-nvidia-in-the-booming-data-center-realm">https://www.tomshardware.com/tech-industry/artificial-intelligence/qualcomm-unveils-ai200-and-ai250-ai-inference-accelerators-hexagon-takes-on-amd-and-nvidia-in-the-booming-data-center-realm</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.110927</td>
+<td>0.110927</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">QCOM</td>
+<td class="frozen-col frozen-date">2026-04-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.151154</td>
+<td class="wrap">Qualcomm reported fiscal Q2 2026 results on 2026-04-29, including revenue of $10.6 billion and non-GAAP EPS of $2.65, while market coverage on 2026-04-30 reported that shares jumped as investors focused on smartphone recovery and data-center AI opportunities. The input row math shows Massive and yFinance both report the same +15.1154% return, with no dividend or split in either input row field, supporting a real earnings and AI-opportunity news move.</td>
+<td class="wrap">Qualcomm's fiscal Q2 2026 results and investor optimism around smartphone recovery and AI/data-center opportunities explain the 2026-04-30 stock move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://s204.q4cdn.com/645488518/files/doc_financials/2026/q2/FY2026-2nd-Quarter-Earnings-Release.pdf">https://s204.q4cdn.com/645488518/files/doc_financials/2026/q2/FY2026-2nd-Quarter-Earnings-Release.pdf</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/qualcomm-shares-jump-as-optimism-on-smartphones-ai-chips-outweigh-dismal-forecast-4648248">https://www.investing.com/news/stock-market-news/qualcomm-shares-jump-as-optimism-on-smartphones-ai-chips-outweigh-dismal-forecast-4648248</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.151154</td>
+<td>0.151154</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">STE</td>
+<td class="frozen-col frozen-date">2023-02-09</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.108918</td>
+<td class="wrap">STERIS reported fiscal Q3 2023 results after the prior close, and independent market coverage described the stock decline as a reaction to Q3 misses and reduced fiscal 2023 guidance. The input row math shows Massive and yFinance both report the same -10.8918% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a corporate-action discrepancy.</td>
+<td class="wrap">STERIS reported fiscal third-quarter 2023 results and reduced guidance, producing a large negative stock reaction on 2023-02-09.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://sterisplc.gcs-web.com/news-releases/news-release-details/steris-announces-financial-results-fiscal-2023-third-quarter">https://sterisplc.gcs-web.com/news-releases/news-release-details/steris-announces-financial-results-fiscal-2023-third-quarter</a></td>
+<td class="url"><a href="https://www.massdevice.com/steris-stock-dives-on-q3-misses-slashed-2023-guidance/">https://www.massdevice.com/steris-stock-dives-on-q3-misses-slashed-2023-guidance/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.108918</td>
+<td>-0.108918</td>
+<td></td>
+<td>6</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">STE</td>
+<td class="frozen-col frozen-date">2025-11-18</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.002451</td>
+<td class="wrap">STERIS announced a quarterly dividend of $0.63 per share, payable 2025-12-18 to shareholders of record on 2025-11-18, and independent dividend history lists a $0.63 ex-dividend event on 2025-11-18. The input row math shows Massive includes ca:0.63 while yFinance has no event; the return difference of about 0.2457% matches the expected dividend impact of about 0.2451%. Massive is therefore the better-supported source for this row.</td>
+<td class="wrap">STERIS declared a $0.63 quarterly dividend with record date 2025-11-18 and payment date 2025-12-18.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://sterisplc.gcs-web.com/node/19601/pdf">https://sterisplc.gcs-web.com/node/19601/pdf</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/ste/dividend/">https://stockanalysis.com/stocks/ste/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.63</td>
+<td></td>
+<td>0.002418</td>
+<td>-3.9e-05</td>
+<td>-0.002457</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">T</td>
+<td class="frozen-col frozen-date">2021-07-08</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>DISTRIBUTION</td>
+<td>0.017974</td>
+<td class="wrap">AT&amp;T's historical dividend information and independent dividend history support a $0.52 quarterly dividend in the July 2021 dividend cycle. Both Massive and yFinance include ca:0.52 in the input row fields. The input row math shows the difference is not a missing event; instead, the same cash dividend is being applied against different adjusted return bases, likely reflecting vendor methodology around later AT&amp;T/WBD historical adjustment treatment. Both vendors identify the dividend event, so this is best treated as an event-return-basis mismatch rather than a source correctness issue.</td>
+<td class="wrap">AT&amp;T paid a $0.52 quarterly common dividend in the July 2021 dividend cycle. Both vendors include the cash event, but the adjusted return basis differs.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.att.com/stock-information/historical-stock-information/historical-common-dividends/att-inc">https://investors.att.com/stock-information/historical-stock-information/historical-common-dividends/att-inc</a></td>
+<td class="url"><a href="https://fullratio.com/stocks/nyse-t/dividend">https://fullratio.com/stocks/nyse-t/dividend</a></td>
+<td>EVENT_RETURN_BASIS_MISMATCH</td>
+<td>ca:0.52</td>
+<td>ca:0.52</td>
+<td>-0.008096</td>
+<td>-0.002178</td>
+<td>0.005918</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">T</td>
+<td class="frozen-col frozen-date">2021-10-07</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>DISTRIBUTION</td>
+<td>0.019041</td>
+<td class="wrap">AT&amp;T's historical dividend information and independent dividend history show a $0.52 quarterly dividend with ex-dividend date 2021-10-07 and record date 2021-10-11. Both Massive and yFinance include ca:0.52 in the input row fields. The input row math shows the return difference comes from the dividend being applied against different adjusted return bases, not from a missing or extra dividend. Both vendors identify the event, so this is best treated as an event-return-basis mismatch.</td>
+<td class="wrap">AT&amp;T paid a $0.52 quarterly common dividend with ex-dividend date 2021-10-07. Both vendors include the cash event, but the adjusted return basis differs.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.att.com/stock-information/historical-stock-information/historical-common-dividends/att-inc">https://investors.att.com/stock-information/historical-stock-information/historical-common-dividends/att-inc</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/t/dividend/">https://stockanalysis.com/stocks/t/dividend/</a></td>
+<td>EVENT_RETURN_BASIS_MISMATCH</td>
+<td>ca:0.52</td>
+<td>ca:0.52</td>
+<td>0.011198</td>
+<td>0.017598</td>
+<td>0.0064</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">T</td>
+<td class="frozen-col frozen-date">2022-01-07</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-MEDIUM">MEDIUM</td>
+<td>DISTRIBUTION</td>
+<td>0.019916</td>
+<td class="wrap">AT&amp;T's historical dividend information and independent dividend history support a $0.52 quarterly dividend with ex-dividend date 2022-01-07. Both Massive and yFinance include ca:0.52 in the input row fields. The input row math shows the same event amount but different dividend return impact, consistent with an adjusted-return-basis difference around the later WarnerMedia/WBD separation treatment. Both vendors identify the event, so this is not a missing dividend.</td>
+<td class="wrap">AT&amp;T paid a $0.52 quarterly common dividend with ex-dividend date 2022-01-07. Both vendors include the cash event, but the adjusted return basis differs.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investors.att.com/stock-information/historical-stock-information/historical-common-dividends/att-inc">https://investors.att.com/stock-information/historical-stock-information/historical-common-dividends/att-inc</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/t/dividend/">https://stockanalysis.com/stocks/t/dividend/</a></td>
+<td>EVENT_RETURN_BASIS_MISMATCH</td>
+<td>ca:0.52</td>
+<td>ca:0.52</td>
+<td>0.027354</td>
+<td>0.034163</td>
+<td>0.006808</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">T</td>
+<td class="frozen-col frozen-date">2023-04-20</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.104061</td>
+<td class="wrap">AT&amp;T reported Q1 2023 results on 2023-04-20. Independent market coverage reported that the stock sold off after AT&amp;T missed revenue and free-cash-flow expectations, despite wireless subscriber additions. The input row math shows Massive and yFinance both report the same -10.4061% return, with no dividend or split in either input row field, supporting a real earnings/news move rather than a vendor data discrepancy.</td>
+<td class="wrap">AT&amp;T's Q1 2023 results triggered a sharp selloff on 2023-04-20, driven by revenue and free-cash-flow concerns.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://about.att.com/story/2023/q1-earnings.html">https://about.att.com/story/2023/q1-earnings.html</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/att-quarterly-wireless-subscriber-additions-beat-estimates-3060339">https://www.investing.com/news/stock-market-news/att-quarterly-wireless-subscriber-additions-beat-estimates-3060339</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.104061</td>
+<td>-0.104061</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">TEL</td>
+<td class="frozen-col frozen-date">2025-07-23</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.119521</td>
+<td class="wrap">TE Connectivity reported fiscal Q3 2025 results on 2025-07-23, with double-digit sales and EPS growth, and independent coverage reported better-than-expected results and an upbeat fourth-quarter outlook. The input row math shows Massive and yFinance both report the same +11.9521% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a vendor data discrepancy.</td>
+<td class="wrap">TE Connectivity delivered strong fiscal Q3 2025 results and a robust outlook on 2025-07-23, explaining the large positive stock move.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.te.com/en/about-te/news-center/corporate-news/2025/2025-07-23-te-connectivity-delivers-double-digit-sales-and-eps-growth-in-third-quarter-of-fiscal-2025.html">https://www.te.com/en/about-te/news-center/corporate-news/2025/2025-07-23-te-connectivity-delivers-double-digit-sales-and-eps-growth-in-third-quarter-of-fiscal-2025.html</a></td>
+<td class="url"><a href="https://m.investing.com/news/stock-market-news/te-connectivity-projects-robust-fourth-quarter-reports-upbeat-quarterly-results-4147571?ampMode=1">https://m.investing.com/news/stock-market-news/te-connectivity-projects-robust-fourth-quarter-reports-upbeat-quarterly-results-4147571?ampMode=1</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.119521</td>
+<td>0.119521</td>
+<td></td>
+<td>8</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">TEL</td>
+<td class="frozen-col frozen-date">2025-11-21</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.00331</td>
+<td class="wrap">TE Connectivity announced a regular quarterly cash dividend of $0.71 per share, payable 2025-12-12 to shareholders of record on 2025-11-21. Independent dividend history also supports a $0.71 dividend on 2025-11-21. The input row math shows Massive includes ca:0.71 while yFinance has no event; the return difference of about 0.3390% matches the expected dividend impact of about 0.3310%. Massive is therefore the better-supported source for this row.</td>
+<td class="wrap">TE Connectivity declared a $0.71 quarterly dividend with record date 2025-11-21 and payment date 2025-12-12.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.te.com/en/about-te/news-center/corporate-news/2025/2025-09-10-te-connectivity-declares-quarterly-dividend.html">https://www.te.com/en/about-te/news-center/corporate-news/2025/2025-09-10-te-connectivity-declares-quarterly-dividend.html</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/tel/dividend/">https://stockanalysis.com/stocks/tel/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.71</td>
+<td></td>
+<td>0.02409</td>
+<td>0.0207</td>
+<td>-0.00339</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">TT</td>
+<td class="frozen-col frozen-date">2025-12-05</td>
+<td></td>
+<td class="status-MASSIVE">MASSIVE</td>
+<td class="status-HIGH">HIGH</td>
+<td>DISTRIBUTION</td>
+<td>0.002319</td>
+<td class="wrap">Trane Technologies announced a quarterly dividend of $0.94 per ordinary share, payable 2025-12-31 to shareholders of record on 2025-12-05. Independent dividend history also lists a $0.94 dividend on 2025-12-05. The input row math shows Massive includes ca:0.94 while yFinance has no event; the return difference of about 0.2302% matches the expected dividend impact of about 0.2319%. Massive is therefore the better-supported source for this row.</td>
+<td class="wrap">Trane Technologies declared a $0.94 quarterly dividend with record date 2025-12-05 and payment date 2025-12-31.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://ir.tranetechnologies.com/news-and-events/news-releases/news-release-details/2025/Trane-Technologies-Declares-Quarterly-Dividend-77d937dfb/default.aspx">https://ir.tranetechnologies.com/news-and-events/news-releases/news-release-details/2025/Trane-Technologies-Declares-Quarterly-Dividend-77d937dfb/default.aspx</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/tt/dividend/">https://stockanalysis.com/stocks/tt/dividend/</a></td>
+<td>YF_MISSING_EVENT</td>
+<td>ca:0.94</td>
+<td></td>
+<td>-0.007369</td>
+<td>-0.009671</td>
+<td>-0.002302</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2021-10-19</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.10582</td>
+<td class="wrap">Market coverage on 2021-10-19 reported that Ulta shares fell after the company released long-term financial targets at its investor day, with some investors disappointed that the company did not issue full-year 2021 guidance. The input row math shows Massive and yFinance both report the same -10.5820% return, with no dividend or split in either input row field. This supports a real investor-day/news move rather than a corporate-action discrepancy.</td>
+<td class="wrap">Ulta Beauty sold off on 2021-10-19 after investor-day targets and the absence of full-year 2021 guidance disappointed investors.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2021/10/19/stocks-making-the-biggest-moves-midday-ulta-proshares-bitcoin-strategy-etf-chargepoint-and-more.html">https://www.cnbc.com/2021/10/19/stocks-making-the-biggest-moves-midday-ulta-proshares-bitcoin-strategy-etf-chargepoint-and-more.html</a></td>
+<td class="url"><a href="https://www.thestreet.com/investing/5-top-stock-decliners-for-tuesday-proctergamble-ulta-macys">https://www.thestreet.com/investing/5-top-stock-decliners-for-tuesday-proctergamble-ulta-macys</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.10582</td>
+<td>-0.10582</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2023-05-26</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.133678</td>
+<td class="wrap">Ulta reported fiscal Q1 2023 results after the prior close, and independent market coverage reported that the stock fell on a revenue miss, slowing comparable sales, and margin concerns. The input row math shows Massive and yFinance both report the same -13.3678% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a vendor data discrepancy.</td>
+<td class="wrap">Ulta Beauty's fiscal Q1 2023 earnings reaction drove the large negative return on 2023-05-26.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.ulta.com/investor/sec-filings/quarterly-reports/content/0001558370-23-010464/0001558370-23-010464.pdf">https://www.ulta.com/investor/sec-filings/quarterly-reports/content/0001558370-23-010464/0001558370-23-010464.pdf</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/ulta-beauty-stock-plunges-10-on-q1-revenue-miss-comps-slow-to-93-432SI-3091406">https://www.investing.com/news/stock-market-news/ulta-beauty-stock-plunges-10-on-q1-revenue-miss-comps-slow-to-93-432SI-3091406</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.133678</td>
+<td>-0.133678</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2023-12-01</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.108078</td>
+<td class="wrap">Ulta reported fiscal Q3 2023 results after the prior close. Independent coverage described in-line results, a raised full-year outlook, and a positive stock reaction. The input row math shows Massive and yFinance both report the same +10.8078% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a data discrepancy.</td>
+<td class="wrap">Ulta Beauty rallied on 2023-12-01 after fiscal Q3 2023 results and a raised full-year outlook.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2023/11/30/ulta-beauty-ulta-q3-2023-earnings.html">https://www.cnbc.com/2023/11/30/ulta-beauty-ulta-q3-2023-earnings.html</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/ulta-nasdaqulta-reports-q3-in-line-with-expectations-but-raises-full-year-outlook-stock-soars-3247241">https://www.investing.com/news/stock-market-news/ulta-nasdaqulta-reports-q3-in-line-with-expectations-but-raises-full-year-outlook-stock-soars-3247241</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.108078</td>
+<td>0.108078</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2024-04-03</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.153364</td>
+<td class="wrap">Ulta shares fell sharply on 2024-04-03 after management comments at a JPMorgan investor conference warned of slowing beauty-category demand and softer-than-expected trends. Independent coverage reported a double-digit selloff tied to those comments. The input row math shows Massive and yFinance both report the same -15.3364% return, with no dividend or split in either input row field. This supports a real news move rather than a vendor data issue.</td>
+<td class="wrap">Ulta Beauty sold off on 2024-04-03 after management warned that beauty demand was slowing earlier and more than expected.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.cnbc.com/2024/04/03/ulta-shares-fall-as-ceo-warns-beauty-demand-is-slowing.html">https://www.cnbc.com/2024/04/03/ulta-shares-fall-as-ceo-warns-beauty-demand-is-slowing.html</a></td>
+<td class="url"><a href="https://www.fool.com/investing/2024/04/03/why-ulta-beauty-stock-sank-on-wednesday/">https://www.fool.com/investing/2024/04/03/why-ulta-beauty-stock-sank-on-wednesday/</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.153364</td>
+<td>-0.153364</td>
+<td></td>
+<td>11</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2025-03-14</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.13677</td>
+<td class="wrap">Ulta reported fiscal Q4 2024 results after the prior close, with stronger-than-expected revenue, profitability, and diluted EPS. Independent market coverage reported that the stock rose despite a cautious 2025 outlook. The input row math shows Massive and yFinance both report the same +13.6770% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a corporate-action issue.</td>
+<td class="wrap">Ulta Beauty rallied on 2025-03-14 after stronger-than-expected fiscal Q4 2024 results.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://d1io3yog0oux5.cloudfront.net/_b79f59373194d99c0c8100d8e93680d0/ulta/news/2025-03-13_Ulta_Beauty_Announces_Fourth_Quarter_Fiscal_2024_200.pdf">https://d1io3yog0oux5.cloudfront.net/_b79f59373194d99c0c8100d8e93680d0/ulta/news/2025-03-13_Ulta_Beauty_Announces_Fourth_Quarter_Fiscal_2024_200.pdf</a></td>
+<td class="url"><a href="https://www.schaeffersresearch.com/content/news/2025/03/14/ulta-beauty-posts-q4-beat-brushes-off-disappointing-outlook">https://www.schaeffersresearch.com/content/news/2025/03/14/ulta-beauty-posts-q4-beat-brushes-off-disappointing-outlook</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.13677</td>
+<td>0.13677</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2025-05-30</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.11776</td>
+<td class="wrap">Ulta reported fiscal Q1 2025 results after the prior close and raised fiscal 2025 guidance after stronger-than-expected performance. Independent coverage reported that shares rose on the earnings beat and raised outlook. The input row math shows Massive and yFinance both report the same +11.7760% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a data discrepancy.</td>
+<td class="wrap">Ulta Beauty rallied on 2025-05-30 after fiscal Q1 2025 results beat expectations and management raised guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://d1io3yog0oux5.cloudfront.net/_6dd4a2c2945322ffa41999d7cd8fcadd/ulta/news/2025-05-29_Ulta_Beauty_Announces_First_Quarter_Fiscal_2025_206.pdf">https://d1io3yog0oux5.cloudfront.net/_6dd4a2c2945322ffa41999d7cd8fcadd/ulta/news/2025-05-29_Ulta_Beauty_Announces_First_Quarter_Fiscal_2025_206.pdf</a></td>
+<td class="url"><a href="https://www.investing.com/news/earnings/ulta-beauty-surges-as-q1-earnings-beat-estimates-4071337">https://www.investing.com/news/earnings/ulta-beauty-surges-as-q1-earnings-beat-estimates-4071337</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.11776</td>
+<td>0.11776</td>
+<td></td>
+<td>6</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2025-12-05</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>0.12651</td>
+<td class="wrap">Ulta reported fiscal Q3 2025 results after the prior close, with comparable sales growth and increased fiscal 2025 guidance. Independent coverage reported that the stock rose after the beat-and-raise report. The input row math shows Massive and yFinance both report the same +12.6510% return, with no dividend or split in either input row field. This supports a real earnings/news move rather than a vendor data discrepancy.</td>
+<td class="wrap">Ulta Beauty rallied on 2025-12-05 after fiscal Q3 2025 results beat expectations and the company increased guidance.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.ulta.com/investor/news-events/press-releases/detail/220/ulta-beauty-announces-third-quarter-fiscal-2025-results/">https://www.ulta.com/investor/news-events/press-releases/detail/220/ulta-beauty-announces-third-quarter-fiscal-2025-results/</a></td>
+<td class="url"><a href="https://www.investing.com/news/earnings/ulta-jumps-after-beat-and-raise-on-makeup-and-skincare-demand-4392040">https://www.investing.com/news/earnings/ulta-jumps-after-beat-and-raise-on-makeup-and-skincare-demand-4392040</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>0.12651</td>
+<td>0.12651</td>
+<td></td>
+<td>6</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ULTA</td>
+<td class="frozen-col frozen-date">2026-03-13</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.142436</td>
+<td class="wrap">Ulta reported fiscal Q4 and full-year 2025 results after the prior close and provided fiscal 2026 guidance. Independent market coverage reported that shares fell sharply on margin concerns, rising costs, and a muted profit outlook despite sales growth. The input row math shows Massive and yFinance both report the same -14.2436% return, with no dividend or split in either input row field. This supports a real earnings/guidance move rather than a vendor data discrepancy.</td>
+<td class="wrap">Ulta Beauty sold off on 2026-03-13 after fiscal 2025 results and fiscal 2026 guidance raised margin and cost concerns.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.ulta.com/investor/news-events/press-releases/detail/224/ulta-beauty-announces-fourth-quarter-and-fiscal-2025">https://www.ulta.com/investor/news-events/press-releases/detail/224/ulta-beauty-announces-fourth-quarter-and-fiscal-2025</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/ulta-beauty-slides-as-rising-costs-hit-margins-focus-on-tiktok-push-under-new-ceo-4560159">https://www.investing.com/news/stock-market-news/ulta-beauty-slides-as-rising-costs-hit-margins-focus-on-tiktok-push-under-new-ceo-4560159</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.142436</td>
+<td>-0.142436</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ZBH</td>
+<td class="frozen-col frozen-date">2024-09-05</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.087439</td>
+<td class="wrap">Zimmer Biomet shares fell after management disclosed ERP-transition problems that were expected to pressure 2024 sales and earnings. Investing.com reported the stock dropped more than 8% after the disclosure, while Yahoo Finance reported a nearly 9% decline tied to the SAP ERP transition complications. The input row math shows Massive and yFinance have the same -8.7439% return and no corporate-action mismatch. The move is therefore explained by company-specific news rather than a vendor adjustment problem.</td>
+<td class="wrap">Zimmer Biomet disclosed ERP-transition complications expected to weigh on 2024 sales and profits, triggering an approximately 9% stock decline.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/zimmer-biomet-stock-falls-on-warning-3603396">https://www.investing.com/news/stock-market-news/zimmer-biomet-stock-falls-on-warning-3603396</a></td>
+<td class="url"><a href="https://finance.yahoo.com/news/zimmer-biomet-stock-falls-medtech-192948941.html">https://finance.yahoo.com/news/zimmer-biomet-stock-falls-medtech-192948941.html</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.087439</td>
+<td>-0.087439</td>
+<td></td>
+<td>5</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ZBH</td>
+<td class="frozen-col frozen-date">2025-05-05</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.116234</td>
+<td class="wrap">Zimmer Biomet reported first-quarter 2025 results and lowered its full-year adjusted EPS guidance to $7.90-$8.10 from $8.15-$8.35, citing Paragon 28, currency, and tariff effects. Investing.com reported that shares fell about 10% after the lowered EPS outlook, even though first-quarter EPS and revenue beat estimates. The input row math shows Massive and yFinance have the same -11.6234% return and no corporate-action mismatch. This is a real-world earnings/guidance reaction, so both vendors appear to reflect the same market move.</td>
+<td class="wrap">Zimmer Biomet's May 5, 2025 first-quarter release lowered full-year adjusted EPS guidance, and the stock sold off sharply despite reported earnings beats.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://investor.zimmerbiomet.com/news-and-events/news/2025/05-05-2025-113050819">https://investor.zimmerbiomet.com/news-and-events/news/2025/05-05-2025-113050819</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/zimmer-biomet-stock-falls-on-lowered-eps-guidance-93CH-4022570">https://www.investing.com/news/stock-market-news/zimmer-biomet-stock-falls-on-lowered-eps-guidance-93CH-4022570</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.116234</td>
+<td>-0.116234</td>
+<td></td>
+<td>6</td>
+</tr>
+<tr>
+<td class="frozen-col frozen-ticker">ZBH</td>
+<td class="frozen-col frozen-date">2025-11-05</td>
+<td></td>
+<td class="status-BOTH">BOTH</td>
+<td class="status-HIGH">HIGH</td>
+<td>NEWS</td>
+<td>-0.151483</td>
+<td class="wrap">Zimmer Biomet reported third-quarter 2025 results and narrowed its full-year organic constant-currency revenue growth guidance to 3.5%-4.0% from 3.5%-4.5%. Reuters, via Investing.com, reported that shares fell about 15% after the cut, citing weakness in Latin America and emerging markets in Europe. The input row math shows Massive and yFinance both report the same -15.1483% return with no corporate-action mismatch. The return is therefore consistent with a material news-driven market reaction rather than a data reconciliation issue.</td>
+<td class="wrap">Zimmer Biomet narrowed its 2025 organic revenue growth outlook after Q3 results, citing international-market weakness, and the stock declined roughly 15%.</td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="wrap"></td>
+<td class="url"><a href="https://www.prnewswire.com/news-releases/zimmer-biomet-announces-third-quarter-2025-financial-results-302605060.html">https://www.prnewswire.com/news-releases/zimmer-biomet-announces-third-quarter-2025-financial-results-302605060.html</a></td>
+<td class="url"><a href="https://www.investing.com/news/stock-market-news/zimmer-cuts-2025-organic-sales-growth-forecast-on-weakness-in-international-markets-4334260">https://www.investing.com/news/stock-market-news/zimmer-cuts-2025-organic-sales-growth-forecast-on-weakness-in-international-markets-4334260</a></td>
+<td>HIGH_SCORE_ANOMALY</td>
+<td></td>
+<td></td>
+<td>-0.151483</td>
+<td>-0.151483</td>
+<td></td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>

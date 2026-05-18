@@ -18,7 +18,7 @@ ROW LIMIT RULE
 
 Process ONLY rows where:
 
-needs_review == TRUE
+needs_review == true
 
 There will never be more than 19 qualifying rows.
 
@@ -38,7 +38,7 @@ For each qualifying row:
 3. Determine whether Massive or yFinance is more economically correct.
 4. Use BOTH:
    - external real-world evidence
-   - audit_returns() CSV math
+   - audit_returns() input-derived calculation
 5. Produce institutional-quality reconciliation conclusions.
 
 Do NOT rely primarily on:
@@ -92,12 +92,32 @@ CORE ANALYTICAL PRINCIPLE
 
 External research identifies the real-world event.
 
-The CSV return math determines:
+The input row math determines:
 - which vendor is economically correct
 - whether the discrepancy reconciles
 - whether the issue is actionable
 
 The model MUST use BOTH.
+
+==================================================
+TERMINOLOGY RULE
+==================================================
+
+When describing row-level audit evidence, use:
+- input row math
+- input row fields
+- input row discrepancy
+- input row evidence
+- input row reconciliation
+
+Do NOT use:
+- CSV math
+- CSV fields
+- CSV discrepancy
+- CSV evidence
+- CSV reconciliation
+
+The term CSV may be used only when referring to the file format itself.
 
 ==================================================
 REQUIRED INVESTIGATION SEQUENCE
@@ -276,10 +296,10 @@ ca:<cash_amount>
 Example:
 ca:0.82
 
-Multiple events may be semicolon-separated.
+Multiple same-day events may be space-separated.
 
 has_div_split_mismatch:
-TRUE when Massive and yFinance event markers differ.
+true when Massive and yFinance event markers differ.
 
 --------------------------------------------------
 RETURN FIELDS
@@ -331,7 +351,7 @@ REVIEW / DIAGNOSTIC FIELDS
 --------------------------------------------------
 
 needs_review:
-TRUE when review is required.
+true when review is required.
 
 review_priority:
 HIGH / MEDIUM / LOW review priority.
@@ -359,11 +379,13 @@ Deterministic diagnostic classification.
 
 Important values include:
 - CLOSE_REVERSAL
-- MS_MISSING_EVENT_ADJUSTMENT
+- MS_MISSING_EVENT
 - MS_EVENT_DATE_MISMATCH
+- MS_EXTRA_EVENT
+- MS_PARTIAL_EVENT
 - MS_ADJ_FACTOR_CONTINUITY
 - MS_DIV_SPLIT_RETURN_MISMATCH
-- MS_EVENT_SOURCE_MISMATCH
+- EVENT_SOURCE_MISMATCH
 - YF_DIV_SPLIT_RETURN_MISMATCH
 - MS_RETURN_METHOD_UNRESOLVED
 
@@ -371,7 +393,7 @@ analysis_confidence:
 Deterministic pre-research confidence label.
 
 massive_needs_fix:
-TRUE when the deterministic audit logic believes Massive may require correction.
+true when the deterministic audit logic believes Massive may require correction.
 
 massive_problem_summary:
 Human-readable Massive issue summary.
@@ -719,7 +741,7 @@ evidence_summary MUST:
 - summarize findings
 - explain economic plausibility
 - explicitly reference Massive and yFinance
-- explicitly explain the CSV return math
+- explicitly explain the input row math
 
 If assigning MASSIVE or YFINANCE, explicitly include:
 - ms_return
@@ -767,7 +789,7 @@ Before finalizing EACH row verify:
 3. ms_return and yf_return were compared.
 4. diff_return sign convention was handled correctly.
 5. Event-return fields were evaluated.
-6. likely_correct_source follows from the CSV math.
+6. likely_correct_source follows from the input-derived calculation.
 7. evidence_summary explicitly names Massive and yFinance.
 8. No generic vendor wording exists.
 9. The conclusion is economically plausible.

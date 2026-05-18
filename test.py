@@ -11,9 +11,22 @@ from audit import Audit
 import utilities as util
 
 # Constants
-_DO_QA = False  # TODO: True
+# _DO_QA = True
 _FROM_DATE = "2021-05-16"
 _TO_DATE = "2026-05-16"
+
+# Columns to exclude from the test CSV output, which may contain non-deterministic content that
+# would cause false positives in diff-based QA.  These columns are still included in the full CSV
+# output for human review.
+_NON_DETERMINISTIC_COLUMNS = (
+    "evidence summary",
+    # "massive fix action",
+    # "massive problem summary",
+    # "massive why incorrect",
+    "primary source url",
+    "real world event",
+    "secondary source url",
+)
 
 
 def main() -> None:
@@ -28,10 +41,12 @@ def main() -> None:
     )
 
     # Print ohlcv audit results.  Squeaky clean, probably always empty.
-    if not audit.audited_adjusted_ohlcv.is_empty():
+    if audit.audited_adjusted_ohlcv.is_empty():
+        print("No adjusted OHLCV mismatches detected.")
+    else:
         print(audit.audited_adjusted_ohlcv)
 
-    for actionable in (False, True):
+    for actionable in (True, False):
         # Set the output paths
         base_path = "outputs/actionable" if actionable else "outputs/non_actionable"
         base_path = f"{base_path}.{_FROM_DATE}.{_TO_DATE}"
@@ -40,14 +55,20 @@ def main() -> None:
         pdf_path = f"{base_path}.pdf"
 
         # Write the audit results
-        audit.csv_audit_report(actionable=actionable, output_path=csv_path)
-        audit.html_audit_report(actionable=actionable, output_path=html_path)
-        audit.pdf_audit_report(actionable=actionable, summary=True, output_path=pdf_path)
+        audit.csv_audit_report(actionable=actionable, output_path=csv_path, verbose=True)
+        audit.html_audit_report(actionable=actionable, output_path=html_path, verbose=True)
+        audit.pdf_audit_report(
+            actionable=actionable, output_path=pdf_path, summary=True, verbose=True
+        )
 
-        # QA the output
-        if _DO_QA:
-            subprocess.run(["diff", csv_path, f"{csv_path}.good"], check=True)
-            subprocess.run(["diff", html_path, f"{html_path}.good"], check=True)
+        # # QA the output
+        csv_test_path = f"{csv_path}.test"
+        audit.csv_audit_report(
+            actionable=actionable,
+            output_path=csv_test_path,
+            exclude_columns=_NON_DETERMINISTIC_COLUMNS,
+        )
+        subprocess.run(["diff", csv_test_path, f"{csv_path}.verified"], check=False)
 
     # Write the data dictionary PDF
     audit.pdf_data_dictionary("outputs/data_dictionary.pdf")

@@ -70,13 +70,21 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
         pl.col("expected_return_impact").abs() * schema.REAL_WORLD_EVENT_REL_RETURN_TOLERANCE,
     )
 
+    # These are pre-research diagnostics that can point at Massive, but may
+    # actually indicate yFinance is missing the real-world event once external
+    # evidence is joined.
     massive_focused_reason_codes: list[str] = [
         "MS_ADJ_FACTOR_CONTINUITY",
-        "MS_EVENT_SOURCE_MISMATCH",
+        "MS_PARTIAL_EVENT",
+        "MS_EXTRA_EVENT",
+        "EVENT_SOURCE_MISMATCH",
         "MS_DIV_SPLIT_RETURN_MISMATCH",
         "MS_RETURN_METHOD_UNRESOLVED",
     ]
 
+    # Analyst output may provide split/spinoff impact as either an event factor
+    # or an event return. Normalize factors such as 1.05 to +0.05 so the value
+    # can be compared to diff_return.
     normalized_expected_return_impact: pl.Expr = (
         pl.when(
             pl.col("event_bucket").is_in(["SPLIT", "SPINOFF"])
@@ -87,21 +95,47 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
         .otherwise(pl.col("expected_return_impact"))
     )
 
+    # Only return-bearing corporate actions should change reason codes through
+    # event-return reconciliation. NEWS and PRICING_METHOD can explain a review
+    # row, but they should not be treated as a missing dividend/split adjustment.
+    return_bearing_event_expr: pl.Expr = (
+        (pl.col("event_detected") == "YES")
+        & pl.col("event_bucket").is_in(schema.REAL_WORLD_EVENT_RETURN_BUCKETS)
+        & pl.col("expected_return_impact").is_not_null()
+    )
+
+    # Signed reconciliation matters because diff_return = yFinance - Massive.
+    # If Massive is correct and yFinance missed a positive event, diff_return
+    # should be negative. If yFinance is correct and Massive missed the event,
+    # diff_return should be positive.
+    expected_diff_for_likely_source_expr: pl.Expr = (
+        pl.when(pl.col("likely_correct_source") == "MASSIVE")
+        .then(-pl.col("expected_return_impact"))
+        .when(pl.col("likely_correct_source") == "YFINANCE")
+        .then(pl.col("expected_return_impact"))
+        .otherwise(None)
+    )
+
     return (
         df.with_columns(normalized_expected_return_impact.alias("expected_return_impact"))
         .with_columns(
             (
+                # real_world_event_return_match is the bridge between external
+                # research and input row math. Overrides below are allowed only when
+                # the confirmed event magnitude reconciles to the signed return
+                # difference within tolerance.
                 pl.col("diff_return").is_not_null()
-                & (pl.col("event_detected") == "YES")
-                & pl.col("event_bucket").is_in(schema.REAL_WORLD_EVENT_RETURN_BUCKETS)
-                & pl.col("expected_return_impact").is_not_null()
+                & return_bearing_event_expr
+                & expected_diff_for_likely_source_expr.is_not_null()
                 & (
-                    ((pl.col("diff_return").abs() - pl.col("expected_return_impact").abs()).abs())
+                    (pl.col("diff_return") - expected_diff_for_likely_source_expr).abs()
                     <= real_world_match_tolerance_expr
                 )
             ).alias("real_world_event_return_match")
         )
         .with_columns(
+            # These support flags are later used to rewrite generic or
+            # pre-research reason codes into source-specific diagnostics.
             (
                 pl.col("real_world_event_return_match")
                 & pl.col("likely_correct_source").is_in(["MASSIVE", "BOTH"])
@@ -112,16 +146,21 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
             ).alias("real_world_event_supports_yfinance"),
         )
         .with_columns(
+            # Reason-code overrides are deliberately conservative: research must
+            # identify the economically correct source and the signed event
+            # impact must explain the Massive/yFinance return difference.
             pl.when(
                 (pl.col("likely_correct_source") == "MASSIVE")
                 & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+                & pl.col("real_world_event_return_match")
             )
             .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
             .when(
                 (pl.col("likely_correct_source") == "MASSIVE")
                 & pl.col("analysis_reason_code").is_in(massive_focused_reason_codes)
+                & pl.col("real_world_event_return_match")
             )
-            .then(pl.lit("YF_MISSING_REAL_WORLD_EVENT"))
+            .then(pl.lit("YF_MISSING_EVENT"))
             .when(
                 pl.col("real_world_event_supports_massive")
                 & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
@@ -131,18 +170,18 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
                 pl.col("real_world_event_supports_massive")
                 & pl.col("analysis_reason_code").is_in(massive_focused_reason_codes)
             )
-            .then(pl.lit("YF_MISSING_REAL_WORLD_EVENT"))
+            .then(pl.lit("YF_MISSING_EVENT"))
             .when(
                 pl.col("real_world_event_supports_yfinance")
                 & pl.col("analysis_reason_code").is_in(
                     [
                         "MS_ADJ_FACTOR_CONTINUITY",
-                        "MS_EVENT_SOURCE_MISMATCH",
+                        "EVENT_SOURCE_MISMATCH",
                         "MS_RETURN_METHOD_UNRESOLVED",
                     ]
                 )
             )
-            .then(pl.lit("MS_MISSING_EVENT_ADJUSTMENT"))
+            .then(pl.lit("MS_MISSING_EVENT"))
             .otherwise(pl.col("analysis_reason_code"))
             .alias("analysis_reason_code")
         )
