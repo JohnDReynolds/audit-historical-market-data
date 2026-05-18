@@ -1,0 +1,322 @@
+# A list of tickers to audit.
+#
+########### High Priority
+ALLE
+AMCR
+BDX
+BKR
+BWA
+CB
+CF
+CMCSA
+CTRA
+DHR
+ED
+ETN
+EXC
+FCX
+GM
+ILMN
+IP
+IQV
+JCI
+KIM
+KKR
+LIN
+LYB
+MRK
+O
+PWR
+QCOM
+STE
+T
+TEL
+TT
+ULTA
+ZBH
+#
+########## Low Priority (There might be some dups.  That's OK because it does a unique set filter.)
+# AAPL
+# ABBV
+# ABT
+# ADM
+# ADP
+# AEP
+# AFL
+# AIZ
+# AJG
+# ALB
+# ALLE
+# ALL
+# AMAT
+# AMCR
+# AME
+# AMGN
+# AMP
+# AOS
+# APA
+# APD
+# ARE
+# ATO
+# AVGO
+# AVY
+# AXP
+# BA
+# BAC
+# BALL
+# BEN
+# BFB
+# BIIB
+# BK
+# BKR
+# BKNG
+# BLK
+# BLL
+# BMY
+# BRO
+# C
+# CAG
+# CAH
+# CAT
+# CB
+# CCI
+# CDNS
+# CE
+# CFG
+# CHD
+# CHRW
+# CHTR
+# CI
+# CINF
+# CL
+# CLX
+# CME
+# CMI
+# CNP
+# COF
+# COO
+# COP
+# COST
+# CPB
+# CPRT
+# CRL
+# CSCO
+# CSX
+# CTAS
+# CTRA
+# CTSH
+# CVNA
+# CVS
+# CVX
+# DAL
+# DD
+# DE
+# DFS
+# DG
+# DLR
+# DOV
+# DOW
+# DRI
+# DUK
+# EA
+# EBAY
+# EFX
+# EL
+# ELV
+# EMR
+# EOG
+# EQR
+# ES
+# ESS
+# ETR
+# EVRG
+# EXPD
+# FANG
+# FAST
+# FDX
+# FDS
+# FITB
+# FIS
+# FLT
+# FMC
+# FTNT
+# GD
+# GE
+# GEN
+# GIS
+# GLW
+# GOOGL
+# GPC
+# GS
+# GWW
+# HAL
+# HD
+# HIG
+# HLT
+# HON
+# HPQ
+# HPE
+# HRL
+# HSIC
+# HSY
+# HUM
+# IBM
+# ICE
+# IFF
+# INTC
+# INTU
+# IQV
+# IR
+# IRM
+# ITW
+# JBHT
+# JCI
+# JNJ
+# K
+# KDP
+# KEY
+# KHC
+# KMB
+# KO
+# KR
+# LEN
+# LEG
+# LH
+# LKQ
+# LLY
+# LMT
+# LNC
+# LNT
+# LOW
+# LRCX
+# LUV
+# LYB
+# MA
+# MCD
+# MCK
+# MCO
+# MDLZ
+# MDT
+# MET
+# MGM
+# MKC
+# MKTX
+# MMC
+# MMM
+# MO
+# MPC
+# MRNA
+# MS
+# MSFT
+# MSI
+# MTB
+# NDAQ
+# NEE
+# NEM
+# NI
+# NKE
+# NOC
+# NSC
+# NTRS
+# NUE
+# NVDA
+# ODFL
+# OKE
+# OMC
+# ON
+# ORCL
+# ORLY
+# OTIS
+# PAYX
+# PBCT
+# PCAR
+# PEG
+# PEP
+# PFE
+# PFG
+# PG
+# PH
+# PKG
+# PLD
+# PNC
+# PNR
+# POOL
+# PPL
+# PPG
+# PRU
+# PSX
+# PWR
+# QCOM
+# RCL
+# REG
+# RE
+# RF
+# RHI
+# RJF
+# RL
+# RMD
+# ROL
+# ROP
+# ROST
+# RSG
+# RTX
+# SBAC
+# SBUX
+# SCHW
+# SEDG
+# SHW
+# SJM
+# SLB
+# SNA
+# SNPS
+# SO
+# SPGI
+# STE
+# STT
+# STZ
+# SWK
+# SYF
+# SYY
+# TDG
+# TER
+# TFX
+# TGT
+# TJX
+# TMO
+# TPR
+# TRMB
+# TROW
+# TRV
+# TSCO
+# TSN
+# TTWO
+# TXN
+# UAL
+# UDR
+# ULTA
+# UNH
+# UNP
+# UPS
+# URI
+# USB
+# V
+# VFC
+# VICI
+# VLTO
+# VLO
+# VMC
+# VRSK
+# VTR
+# VZ
+# WBA
+# WFC
+# WM
+# WMT
+# WRB
+# WST
+# WY
+# XEL
+# XOM
+# XYL
+# YUM
+#

@@ -30,11 +30,11 @@ _NON_DETERMINISTIC_COLUMNS = (
 
 
 def main() -> None:
-    """Run the demo audit and compare generated reports to known-good files."""
+    """Run the demo audit and compare generated reports to known-good verified files."""
 
     # Perform audit
     audit = Audit(
-        tickers=util.load_single_column_csv("inputs/tickers.csv"),
+        tickers=util.load_single_column_csv("inputs/tickers"),
         from_date=_FROM_DATE,
         to_date=_TO_DATE,
         # always_download=False, default
