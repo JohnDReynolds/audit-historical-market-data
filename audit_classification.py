@@ -30,20 +30,6 @@ def add_analysis_labels(
     Returns:
         Frame with ``analysis_confidence`` column.
     """
-    medium_confidence_reason_codes: list[str] = [
-        "MS_MISSING_EVENT",
-        "MS_EVENT_DATE_MISMATCH",
-        "MS_PARTIAL_EVENT",
-        "MS_EXTRA_EVENT",
-        "MS_ADJ_FACTOR_CONTINUITY",
-        "EVENT_DENOMINATOR_MISMATCH",
-        "EVENT_SOURCE_MISMATCH",
-        "HIGH_SCORE_ANOMALY",
-    ]
-
-    if include_real_world_reason_codes:
-        medium_confidence_reason_codes.append("YF_MISSING_EVENT")
-
     return cast(
         _FrameT,
         frame.with_columns(
@@ -51,15 +37,21 @@ def add_analysis_labels(
             .then(pl.lit(""))
             .when(
                 pl.col("analysis_reason_code").is_in(
-                    [
-                        "CLOSE_REVERSAL",
-                        "YF_DIV_SPLIT_RETURN_MISMATCH",
-                        "YF_EVENT_DATE_MISMATCH",
-                    ]
+                    schema.reason_codes_by_confidence(
+                        "HIGH",
+                        include_real_world_reason_codes,
+                    )
                 )
             )
             .then(pl.lit("HIGH"))
-            .when(pl.col("analysis_reason_code").is_in(medium_confidence_reason_codes))
+            .when(
+                pl.col("analysis_reason_code").is_in(
+                    schema.reason_codes_by_confidence(
+                        "MEDIUM",
+                        include_real_world_reason_codes,
+                    )
+                )
+            )
             .then(pl.lit("MEDIUM"))
             .otherwise(pl.lit("LOW"))
             .alias("analysis_confidence"),
@@ -194,242 +186,52 @@ def add_massive_fix_guidance(
             .then(pl.lit(""))
             .when(close_reversal_supports_massive_fix)
             .then(
-                pl.lit(
-                    "Massive close appears incorrect after an adjacent-day close reversal."
-                )
+                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].massive_problem_summary)
             )
-            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT")
-            .then(
-                pl.lit(
-                    "Massive is missing the event/adjustment needed to explain the return "
-                    "difference."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
-            .then(
-                pl.lit(
-                    "Massive appears to have the correct event amount on the wrong trading "
-                    "date."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_PARTIAL_EVENT")
-            .then(
-                pl.lit(
-                    "Massive records a corporate-action event, but the event amount appears "
-                    "incomplete."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_EXTRA_EVENT")
-            .then(
-                pl.lit(
-                    "Massive records an extra corporate-action event or excessive event amount."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
-            .then(
-                pl.lit(
-                    "Massive adjustment-factor continuity does not align with the return "
-                    "difference."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "EVENT_SOURCE_MISMATCH")
-            .then(
-                pl.lit(
-                    "Massive and yFinance report different dividend/split event data for the "
-                    "date."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "EVENT_DENOMINATOR_MISMATCH")
-            .then(
-                pl.lit(
-                    "Massive and yFinance record the same dividend/split event, but calculate "
-                    "different event-return percentages because they use different prior-close "
-                    "denominators."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_RETURN_METHOD_UNRESOLVED")
-            .then(
-                pl.lit(
-                    "Massive return differs from yFinance, but the available event and factor "
-                    "fields do not isolate a single cause."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "HIGH_SCORE_ANOMALY")
-            .then(
-                pl.lit(
-                    "Massive return has a high heuristic anomaly score even though the "
-                    "Massive/yFinance return difference is not material."
-                )
-            )
-            .otherwise(pl.lit(""))
+            .otherwise(_reason_code_text_expr("massive_problem_summary"))
             .alias("massive_problem_summary"),
             pl.when(research_says_massive_correct)
             .then(pl.lit(""))
             .when(close_reversal_supports_massive_fix)
             .then(
-                pl.lit(
-                    "Massive appears incorrect because independent evidence supports the "
-                    "comparison source's close, and the return difference reverses across "
-                    "adjacent trading days."
-                )
+                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].massive_why_incorrect)
             )
-            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT")
-            .then(
-                pl.lit(
-                    "Massive appears incorrect because the comparison source and real-world "
-                    "event evidence support an event/adjustment that Massive did not capture."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
-            .then(
-                pl.lit(
-                    "Massive appears incorrect because the real-world event date and "
-                    "return math indicate the event should be recognized on a different "
-                    "trading date."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_PARTIAL_EVENT")
-            .then(
-                pl.lit(
-                    "Massive appears incorrect because it captured only part of the "
-                    "same-day corporate-action event, and the missing event-return piece "
-                    "explains the Massive/yFinance return difference."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_EXTRA_EVENT")
-            .then(
-                pl.lit(
-                    "Massive appears incorrect because it captured an extra same-day "
-                    "corporate-action event or event amount, and the excess event-return "
-                    "piece explains the Massive/yFinance return difference."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
-            .then(
-                pl.lit(
-                    "Massive appears incorrect because the adjusted-return difference is "
-                    "associated with a change in adjustment-factor continuity rather than "
-                    "only a normal price move."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "EVENT_SOURCE_MISMATCH")
-            .then(
-                pl.lit(
-                    "Massive and yFinance disagree on dividend/split event data, but the "
-                    "pre-research fields do not determine which source is economically correct."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "EVENT_DENOMINATOR_MISMATCH")
-            .then(
-                pl.lit(
-                    "The vendors appear to divide the same cash amount by different prior-close "
-                    "values, so the row needs methodology review rather than a presumptive "
-                    "Massive correction."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_RETURN_METHOD_UNRESOLVED")
-            .then(
-                pl.lit(
-                    "Massive may be incorrect, but the input fields do not provide enough "
-                    "deterministic evidence to assign a more specific defect type."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "HIGH_SCORE_ANOMALY")
-            .then(
-                pl.lit(
-                    "Massive may need review because its adjusted return is unusual relative "
-                    "to the surrounding return pattern, even without a material source "
-                    "difference."
-                )
-            )
-            .otherwise(pl.lit(""))
+            .otherwise(_reason_code_text_expr("massive_why_incorrect"))
             .alias("massive_why_incorrect"),
             pl.when(research_says_massive_correct)
             .then(pl.lit(""))
             .when(close_reversal_supports_massive_fix)
             .then(
-                pl.lit(
-                    "Review and correct the Massive close for the affected date, then rebuild "
-                    "the adjusted close and adjusted return chain."
-                )
+                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].massive_fix_action)
             )
-            .when(pl.col("analysis_reason_code") == "MS_MISSING_EVENT")
-            .then(
-                pl.lit(
-                    "Add or correct the missing Massive dividend/split event, apply the "
-                    "appropriate adjustment factor, and rebuild the adjusted close and "
-                    "adjusted return chain."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
-            .then(
-                pl.lit(
-                    "Move the Massive dividend/split event to the externally confirmed "
-                    "event date, remove the misstated adjacent-date event if present, and "
-                    "rebuild the adjusted close and adjusted return chain."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_PARTIAL_EVENT")
-            .then(
-                pl.lit(
-                    "Correct the Massive event amount to include the full corporate-action "
-                    "distribution, then rebuild the adjusted close and adjusted return chain."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_EXTRA_EVENT")
-            .then(
-                pl.lit(
-                    "Remove the unsupported Massive event amount or duplicate event, then "
-                    "rebuild the adjusted close and adjusted return chain."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_ADJ_FACTOR_CONTINUITY")
-            .then(
-                pl.lit(
-                    "Review Massive corporate-action adjustment factors for this ticker/date, "
-                    "correct the factor history if needed, and rebuild the adjusted close and "
-                    "adjusted return chain."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "EVENT_SOURCE_MISMATCH")
-            .then(
-                pl.lit(
-                    "Compare Massive event records against a trusted corporate-action source; "
-                    "correct missing, extra, or misstated events and rerun the return "
-                    "calculation."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "EVENT_DENOMINATOR_MISMATCH")
-            .then(
-                pl.lit(
-                    "Review the vendors' prior-close denominators for this event; do not treat "
-                    "the row as a Massive event defect unless external evidence shows Massive "
-                    "used the wrong prior close."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "MS_RETURN_METHOD_UNRESOLVED")
-            .then(
-                pl.lit(
-                    "Review Massive close, adjusted close, corporate actions, and return "
-                    "calculation methodology for this ticker/date; manual investigation is "
-                    "required."
-                )
-            )
-            .when(pl.col("analysis_reason_code") == "HIGH_SCORE_ANOMALY")
-            .then(
-                pl.lit(
-                    "Review the Massive close, adjusted close, corporate actions, and nearby "
-                    "returns for this ticker/date to confirm whether the high score reflects "
-                    "a real event or a data issue."
-                )
-            )
-            .otherwise(pl.lit(""))
+            .otherwise(_reason_code_text_expr("massive_fix_action"))
             .alias("massive_fix_action"),
             _massive_fix_priority_expr(research_aware_massive_needs_fix_expr).alias(
                 "massive_fix_priority"
             ),
         ),
     )
+
+
+def _reason_code_text_expr(
+    reason_code_field: str,
+    skip_reason_codes: frozenset[str] = frozenset({"CLOSE_REVERSAL"}),
+) -> pl.Expr:
+    """Return a text expression backed by reason-code metadata."""
+    text_expr: pl.Expr = pl.lit("")
+
+    for reason_code in reversed(list(schema.REASON_CODES.values())):
+        text: str = str(getattr(reason_code, reason_code_field))
+        if reason_code.code in skip_reason_codes or not text:
+            continue
+
+        text_expr = (
+            pl.when(pl.col("analysis_reason_code") == reason_code.code)
+            .then(pl.lit(text))
+            .otherwise(text_expr)
+        )
+
+    return text_expr
 
 
 def add_review_columns(frame: _FrameT) -> _FrameT:
@@ -493,15 +295,7 @@ def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
         # to say Massive needs a fix. It must have been converted to a
         # Massive-focused reason code or supported by likely_correct_source.
         pl.col("analysis_reason_code").is_in(
-            [
-                "MS_MISSING_EVENT",
-                "MS_EVENT_DATE_MISMATCH",
-                "MS_PARTIAL_EVENT",
-                "MS_EXTRA_EVENT",
-                "MS_ADJ_FACTOR_CONTINUITY",
-                "MS_RETURN_METHOD_UNRESOLVED",
-                "HIGH_SCORE_ANOMALY",
-            ]
+            schema.reason_codes_in_group("massive_fix_post_research")
         ),
     )
 

@@ -153,13 +153,7 @@ def _add_pre_research_classification_columns(df_lf: pl.LazyFrame) -> pl.LazyFram
     df_lf = audit_classification.add_massive_fix_guidance(
         df_lf,
         pl.col("analysis_reason_code").is_in(
-            [
-                "MS_MISSING_EVENT",
-                "MS_EVENT_DATE_MISMATCH",
-                "MS_ADJ_FACTOR_CONTINUITY",
-                "MS_RETURN_METHOD_UNRESOLVED",
-                "HIGH_SCORE_ANOMALY",
-            ]
+            schema.reason_codes_in_group("massive_fix_pre_research")
         ),
     )
 

@@ -51,23 +51,23 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
         DataFrame with real-world event support flags applied to
         ``analysis_reason_code``.
     """
+    return apply_real_world_reason_policy(add_real_world_reconciliation_flags(df))
+
+
+def add_real_world_reconciliation_flags(df: pl.DataFrame) -> pl.DataFrame:
+    """Add real-world event reconciliation flags used by reason-code policy.
+
+    Args:
+        df:
+            Return-audit output enriched with real-world event fields.
+
+    Returns:
+        DataFrame with normalized expected return impact and support flags.
+    """
     real_world_match_tolerance_expr: pl.Expr = pl.max_horizontal(
         pl.lit(schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE),
         pl.col("expected_return_impact").abs() * schema.REAL_WORLD_EVENT_REL_RETURN_TOLERANCE,
     )
-
-    # These are pre-research diagnostics that can point at Massive, but may
-    # actually indicate yFinance is missing the real-world event once external
-    # evidence is joined. They are deliberately eligible for source reversal only
-    # after research supplies both a likely source and an event magnitude that
-    # reconciles to the signed return gap.
-    massive_focused_reason_codes: list[str] = [
-        "MS_ADJ_FACTOR_CONTINUITY",
-        "MS_PARTIAL_EVENT",
-        "MS_EXTRA_EVENT",
-        "EVENT_SOURCE_MISMATCH",
-        "MS_RETURN_METHOD_UNRESOLVED",
-    ]
 
     # Analyst output may provide split/spinoff impact as either an event factor
     # or an event return. Normalize factors such as 1.05 to +0.05 so the value
@@ -156,6 +156,33 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
                 & pl.col("likely_correct_source").is_in(["YFINANCE", "BOTH"])
             ).alias("real_world_event_supports_yfinance"),
         )
+    )
+
+
+def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
+    """Rewrite reason codes using real-world reconciliation support flags.
+
+    Args:
+        df:
+            Return-audit output with real-world reconciliation flags.
+
+    Returns:
+        DataFrame with research-aware ``analysis_reason_code`` values.
+    """
+    # These are pre-research diagnostics that can point at Massive, but may
+    # actually indicate yFinance is missing the real-world event once external
+    # evidence is joined. They are deliberately eligible for source reversal only
+    # after research supplies both a likely source and an event magnitude that
+    # reconciles to the signed return gap.
+    yf_missing_override_candidates: list[str] = schema.reason_codes_in_group(
+        "yf_missing_override_candidate"
+    )
+    ms_missing_override_candidates: list[str] = schema.reason_codes_in_group(
+        "ms_missing_override_candidate"
+    )
+
+    return (
+        df
         .with_columns(
             # Reason-code overrides are deliberately conservative: research must
             # identify the economically correct source and the signed event
@@ -173,7 +200,7 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
             .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
             .when(
                 (pl.col("likely_correct_source") == "MASSIVE")
-                & pl.col("analysis_reason_code").is_in(massive_focused_reason_codes)
+                & pl.col("analysis_reason_code").is_in(yf_missing_override_candidates)
                 & (
                     pl.col("real_world_event_return_match")
                     | pl.col("massive_event_return_explains_yf_gap")
@@ -187,19 +214,12 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
             .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
             .when(
                 pl.col("real_world_event_supports_massive")
-                & pl.col("analysis_reason_code").is_in(massive_focused_reason_codes)
+                & pl.col("analysis_reason_code").is_in(yf_missing_override_candidates)
             )
             .then(pl.lit("YF_MISSING_EVENT"))
             .when(
                 pl.col("real_world_event_supports_yfinance")
-                & pl.col("analysis_reason_code").is_in(
-                    [
-                        "MS_ADJ_FACTOR_CONTINUITY",
-                        "EVENT_SOURCE_MISMATCH",
-                        "MS_RETURN_METHOD_UNRESOLVED",
-                        "YF_DIV_SPLIT_RETURN_MISMATCH",
-                    ]
-                )
+                & pl.col("analysis_reason_code").is_in(ms_missing_override_candidates)
             )
             .then(pl.lit("MS_MISSING_EVENT"))
             .when(

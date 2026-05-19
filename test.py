@@ -28,6 +28,8 @@ _NON_DETERMINISTIC_COLUMNS = (
 
 def _main() -> None:
     """Run the demo audit and compare generated reports to known-good verified files."""
+
+    # Fail if forensic analyst instruction txt files drift from code-level schema assumptions.
     forensic_docs_validation.validate_forensic_docs()
 
     # Perform audit

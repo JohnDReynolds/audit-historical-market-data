@@ -46,6 +46,18 @@ class _AuditColumn:
         return _default_display_name(self.name)
 
 
+@dataclass(frozen=True)
+class ReasonCode:
+    """Metadata for one return-audit analysis reason code."""
+
+    code: str
+    confidence: str
+    groups: frozenset[str] = frozenset()
+    massive_problem_summary: str = ""
+    massive_why_incorrect: str = ""
+    massive_fix_action: str = ""
+
+
 # Constants.
 # Adjustment-factor changes can differ slightly when vendors encode the same
 # cash distribution or split mechanics differently. Five basis points is tight
@@ -232,6 +244,235 @@ _DIV_SPLIT_CASH_DENOMINATOR_NOTE = (
     "chain implies prior_close / (prior_close - cash_amount). That convention "
     "difference is not necessarily a data defect."
 )
+
+
+REASON_CODES: dict[str, ReasonCode] = {
+    "CLOSE_REVERSAL": ReasonCode(
+        code="CLOSE_REVERSAL",
+        confidence="HIGH",
+        massive_problem_summary=(
+            "Massive close appears incorrect after an adjacent-day close reversal."
+        ),
+        massive_why_incorrect=(
+            "Massive appears incorrect because independent evidence supports the "
+            "comparison source's close, and the return difference reverses across "
+            "adjacent trading days."
+        ),
+        massive_fix_action=(
+            "Review and correct the Massive close for the affected date, then rebuild "
+            "the adjusted close and adjusted return chain."
+        ),
+    ),
+    "MS_MISSING_EVENT": ReasonCode(
+        code="MS_MISSING_EVENT",
+        confidence="MEDIUM",
+        groups=frozenset({"massive_fix_pre_research", "massive_fix_post_research"}),
+        massive_problem_summary=(
+            "Massive is missing the event/adjustment needed to explain the return "
+            "difference."
+        ),
+        massive_why_incorrect=(
+            "Massive appears incorrect because the comparison source and real-world "
+            "event evidence support an event/adjustment that Massive did not capture."
+        ),
+        massive_fix_action=(
+            "Add or correct the missing Massive dividend/split event, apply the "
+            "appropriate adjustment factor, and rebuild the adjusted close and "
+            "adjusted return chain."
+        ),
+    ),
+    "MS_EVENT_DATE_MISMATCH": ReasonCode(
+        code="MS_EVENT_DATE_MISMATCH",
+        confidence="MEDIUM",
+        groups=frozenset({"massive_fix_pre_research", "massive_fix_post_research"}),
+        massive_problem_summary=(
+            "Massive appears to have the correct event amount on the wrong trading "
+            "date."
+        ),
+        massive_why_incorrect=(
+            "Massive appears incorrect because the real-world event date and "
+            "return math indicate the event should be recognized on a different "
+            "trading date."
+        ),
+        massive_fix_action=(
+            "Move the Massive dividend/split event to the externally confirmed "
+            "event date, remove the misstated adjacent-date event if present, and "
+            "rebuild the adjusted close and adjusted return chain."
+        ),
+    ),
+    "MS_PARTIAL_EVENT": ReasonCode(
+        code="MS_PARTIAL_EVENT",
+        confidence="MEDIUM",
+        groups=frozenset(
+            {
+                "massive_fix_post_research",
+                "yf_missing_override_candidate",
+            }
+        ),
+        massive_problem_summary=(
+            "Massive records a corporate-action event, but the event amount appears "
+            "incomplete."
+        ),
+        massive_why_incorrect=(
+            "Massive appears incorrect because it captured only part of the "
+            "same-day corporate-action event, and the missing event-return piece "
+            "explains the Massive/yFinance return difference."
+        ),
+        massive_fix_action=(
+            "Correct the Massive event amount to include the full corporate-action "
+            "distribution, then rebuild the adjusted close and adjusted return chain."
+        ),
+    ),
+    "MS_EXTRA_EVENT": ReasonCode(
+        code="MS_EXTRA_EVENT",
+        confidence="MEDIUM",
+        groups=frozenset(
+            {
+                "massive_fix_post_research",
+                "yf_missing_override_candidate",
+            }
+        ),
+        massive_problem_summary=(
+            "Massive records an extra corporate-action event or excessive event amount."
+        ),
+        massive_why_incorrect=(
+            "Massive appears incorrect because it captured an extra same-day "
+            "corporate-action event or event amount, and the excess event-return "
+            "piece explains the Massive/yFinance return difference."
+        ),
+        massive_fix_action=(
+            "Remove the unsupported Massive event amount or duplicate event, then "
+            "rebuild the adjusted close and adjusted return chain."
+        ),
+    ),
+    "MS_ADJ_FACTOR_CONTINUITY": ReasonCode(
+        code="MS_ADJ_FACTOR_CONTINUITY",
+        confidence="MEDIUM",
+        groups=frozenset(
+            {
+                "massive_fix_pre_research",
+                "massive_fix_post_research",
+                "yf_missing_override_candidate",
+                "ms_missing_override_candidate",
+            }
+        ),
+        massive_problem_summary=(
+            "Massive adjustment-factor continuity does not align with the return "
+            "difference."
+        ),
+        massive_why_incorrect=(
+            "Massive appears incorrect because the adjusted-return difference is "
+            "associated with a change in adjustment-factor continuity rather than "
+            "only a normal price move."
+        ),
+        massive_fix_action=(
+            "Review Massive corporate-action adjustment factors for this ticker/date, "
+            "correct the factor history if needed, and rebuild the adjusted close and "
+            "adjusted return chain."
+        ),
+    ),
+    "EVENT_DENOMINATOR_MISMATCH": ReasonCode(
+        code="EVENT_DENOMINATOR_MISMATCH",
+        confidence="MEDIUM",
+        massive_problem_summary=(
+            "Massive and yFinance record the same dividend/split event, but calculate "
+            "different event-return percentages because they use different prior-close "
+            "denominators."
+        ),
+        massive_why_incorrect=(
+            "The vendors appear to divide the same cash amount by different prior-close "
+            "values, so the row needs methodology review rather than a presumptive "
+            "Massive correction."
+        ),
+        massive_fix_action=(
+            "Review the vendors' prior-close denominators for this event; do not treat "
+            "the row as a Massive event defect unless external evidence shows Massive "
+            "used the wrong prior close."
+        ),
+    ),
+    "EVENT_SOURCE_MISMATCH": ReasonCode(
+        code="EVENT_SOURCE_MISMATCH",
+        confidence="MEDIUM",
+        groups=frozenset(
+            {
+                "yf_missing_override_candidate",
+                "ms_missing_override_candidate",
+            }
+        ),
+        massive_problem_summary=(
+            "Massive and yFinance report different dividend/split event data for the "
+            "date."
+        ),
+        massive_why_incorrect=(
+            "Massive and yFinance disagree on dividend/split event data, but the "
+            "pre-research fields do not determine which source is economically correct."
+        ),
+        massive_fix_action=(
+            "Compare Massive event records against a trusted corporate-action source; "
+            "correct missing, extra, or misstated events and rerun the return "
+            "calculation."
+        ),
+    ),
+    "HIGH_SCORE_ANOMALY": ReasonCode(
+        code="HIGH_SCORE_ANOMALY",
+        confidence="MEDIUM",
+        groups=frozenset({"massive_fix_pre_research", "massive_fix_post_research"}),
+        massive_problem_summary=(
+            "Massive return has a high heuristic anomaly score even though the "
+            "Massive/yFinance return difference is not material."
+        ),
+        massive_why_incorrect=(
+            "Massive may need review because its adjusted return is unusual relative "
+            "to the surrounding return pattern, even without a material source "
+            "difference."
+        ),
+        massive_fix_action=(
+            "Review the Massive close, adjusted close, corporate actions, and nearby "
+            "returns for this ticker/date to confirm whether the high score reflects "
+            "a real event or a data issue."
+        ),
+    ),
+    "MS_RETURN_METHOD_UNRESOLVED": ReasonCode(
+        code="MS_RETURN_METHOD_UNRESOLVED",
+        confidence="LOW",
+        groups=frozenset(
+            {
+                "massive_fix_pre_research",
+                "massive_fix_post_research",
+                "yf_missing_override_candidate",
+                "ms_missing_override_candidate",
+            }
+        ),
+        massive_problem_summary=(
+            "Massive return differs from yFinance, but the available event and factor "
+            "fields do not isolate a single cause."
+        ),
+        massive_why_incorrect=(
+            "Massive may be incorrect, but the input fields do not provide enough "
+            "deterministic evidence to assign a more specific defect type."
+        ),
+        massive_fix_action=(
+            "Review Massive close, adjusted close, corporate actions, and return "
+            "calculation methodology for this ticker/date; manual investigation is "
+            "required."
+        ),
+    ),
+    "YF_DIV_SPLIT_RETURN_MISMATCH": ReasonCode(
+        code="YF_DIV_SPLIT_RETURN_MISMATCH",
+        confidence="HIGH",
+        groups=frozenset({"ms_missing_override_candidate"}),
+    ),
+    "YF_EVENT_DATE_MISMATCH": ReasonCode(
+        code="YF_EVENT_DATE_MISMATCH",
+        confidence="HIGH",
+        groups=frozenset({"real_world_only"}),
+    ),
+    "YF_MISSING_EVENT": ReasonCode(
+        code="YF_MISSING_EVENT",
+        confidence="MEDIUM",
+        groups=frozenset({"real_world_only"}),
+    ),
+}
 
 
 DATA_DICTIONARY = {
@@ -852,6 +1093,31 @@ def column_names_in_group(group: str) -> set[str]:
         for column in _AUDIT_COLUMNS.values()
         if group in column.groups
     }
+
+
+def reason_codes_in_group(group: str) -> list[str]:
+    """Return reason codes tagged with a registry group, preserving registry order."""
+    return [
+        reason_code.code
+        for reason_code in REASON_CODES.values()
+        if group in reason_code.groups
+    ]
+
+
+def reason_codes_by_confidence(
+    confidence: str,
+    include_real_world_reason_codes: bool,
+) -> list[str]:
+    """Return reason codes with a confidence label, preserving registry order."""
+    return [
+        reason_code.code
+        for reason_code in REASON_CODES.values()
+        if reason_code.confidence == confidence
+        and (
+            include_real_world_reason_codes
+            or "real_world_only" not in reason_code.groups
+        )
+    ]
 
 
 def display_names_in_group(group: str) -> set[str]:

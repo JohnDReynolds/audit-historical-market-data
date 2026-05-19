@@ -101,13 +101,8 @@ def _assert_column_rule_values(
 
 def _assert_reason_codes_documented(instructions_text: str) -> None:
     """Validate that data-dictionary reason codes appear in the analyst instructions."""
-    reason_codes = re.findall(
-        r"^- ([A-Z0-9_]+) =",
-        schema.DATA_DICTIONARY["analysis_reason_code"],
-        re.MULTILINE,
-    )
     missing_reason_codes = [
-        reason_code for reason_code in reason_codes if reason_code not in instructions_text
+        reason_code for reason_code in schema.REASON_CODES if reason_code not in instructions_text
     ]
 
     if missing_reason_codes:
@@ -133,4 +128,3 @@ def _assert_implementation_contract(implementation_text: str) -> None:
             "forensic_ai_analyst_implementation.txt is missing required workflow phrases: "
             + ", ".join(missing_phrases)
         )
-
