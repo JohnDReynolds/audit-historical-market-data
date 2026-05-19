@@ -86,11 +86,12 @@ DATA_DICTIONARY = {
         "- Blank = no analysis reason code is assigned.\n"
         "- LOW = lower deterministic confidence, usually unresolved or less isolated "
         "diagnostics.\n"
-        "- MEDIUM = medium deterministic confidence, usually Massive-focused "
+        "- MEDIUM = medium deterministic confidence, including Massive-focused "
         "diagnostics such as missing event adjustment, adjustment-factor continuity, "
-        "partial event capture, or high-score anomaly.\n"
+        "partial/extra event capture, high-score anomaly, and methodology/source "
+        "diagnostics such as event denominator or event source mismatch.\n"
         "- HIGH = high deterministic confidence, such as close reversal, yFinance "
-        "dividend/split return mismatch, or yFinance event-date mismatch."
+        "dividend/split factor mismatch, or yFinance event-date mismatch."
     ),
     "analysis_reason_code": (
         "Deterministic diagnostic classification assigned by the audit pipeline. It "
@@ -101,8 +102,8 @@ DATA_DICTIONARY = {
         "adjacent trading day, suggesting a close-source or timing artifact rather "
         "than a corporate action.\n"
         "  Example: On Tuesday, Massive return is -2.00% and yFinance return is "
-        "-3.00%, so diff_return is -1.00%. On Wednesday, Massive return is +1.00% "
-        "and yFinance return is +2.00%, so diff_return is +1.00%. The equal and "
+        "-3.00%, so diff_return is +1.00%. On Wednesday, Massive return is +1.00% "
+        "and yFinance return is +2.00%, so diff_return is -1.00%. The equal and "
         "opposite differences suggest a close timing issue, not a real event.\n"
         "- EVENT_DENOMINATOR_MISMATCH = Massive and yFinance record the same "
         "dividend/split marker, but the event-return percentage differs because "
@@ -170,11 +171,11 @@ DATA_DICTIONARY = {
         "is unexpected in ordinary audit runs; it exists as a guardrail for cases "
         "where the input fields do not isolate a single deterministic cause.\n"
         "  Example: Massive return is +2.00% and yFinance return is +3.20%, so "
-        "diff_return is +1.20%. There is no event marker mismatch, denominator "
+        "diff_return is -1.20%. There is no event marker mismatch, denominator "
         "mismatch, factor-continuity mismatch, dividend/split reconciliation break, "
         "or adjacent-day reversal to explain it.\n"
-        "- YF_DIV_SPLIT_RETURN_MISMATCH = yFinance implied dividend/split return "
-        "does not reconcile to yFinance explicit event return.\n"
+        "- YF_DIV_SPLIT_RETURN_MISMATCH = yFinance implied dividend/split factor "
+        "does not reconcile to yFinance explicit dividend/split factor.\n"
         "  Example: yFinance records a $0.40 dividend and prior close is $40.00, "
         "so the explicit dividend impact is about +1.00%. yFinance's adjusted close "
         "implies a +2.50% dividend/split impact instead.\n"
@@ -187,15 +188,6 @@ DATA_DICTIONARY = {
         "  Example: Research confirms a $0.75 dividend with prior close $75.00, so "
         "the expected impact is about +1.00%. Massive shows cd:0.75, but yFinance "
         "has no dividend marker or adjusted-return impact."
-    ),
-    "analysis_sheet": (
-        "Deterministic routing label derived from analysis_reason_code.\n\nPossible "
-        "values, alphabetically:\n"
-        "- Blank = no analysis reason code is assigned.\n"
-        "- Close reversals = rows routed to the close-reversal review group.\n"
-        "- Everything else = rows routed to the general review group.\n"
-        "- yFinance probably incorrect = rows where deterministic diagnostics point "
-        "toward a yFinance-side issue."
     ),
     "research_confidence": (
         "External research confidence label for the likely_correct_source and event "
@@ -213,44 +205,11 @@ DATA_DICTIONARY = {
         "date used to join yFinance prices, dividend/split event markers, return "
         "calculations, diagnostics, and optional real-world event research."
     ),
-    "diff_ms_div_split_factor": (
-        "Difference between Massive implied dividend/split factor and Massive "
-        "explicit dividend/split factor. It is calculated as "
-        "ms_div_split_factor_implied - "
-        "ms_div_split_factor_explicit, but small differences below the configured 1e-6 "
-        "tolerance are set to null. This field compares two related but not identical "
-        "views of the same Massive source records: explicit factor math from the "
-        "event records themselves, and factor math implied by the reconstructed "
-        "backward-adjusted close chain. For ordinary cash dividends, a small positive "
-        "difference can be normal because the explicit cash factor uses "
-        "1 + cash_amount / prior_close, while the backward-adjusted close chain "
-        "implies prior_close / (prior_close - cash_amount). Larger non-null values "
-        "are a guardrail for cases where Massive's adjusted-return chain may not "
-        "reconcile cleanly to Massive's explicit event records."
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
-    ),
     "diff_return": (
-        "Material adjusted-return difference between yFinance and Massive, using the "
-        "sign convention yf_return - ms_return. Positive means yFinance's adjusted "
-        "return is higher than Massive's; negative means yFinance's adjusted return is "
-        "lower. Differences below the configured 1e-4 tolerance are set to null."
-    ),
-    "diff_yf_div_split_factor": (
-        "Difference between yFinance implied dividend/split factor and yFinance "
-        "explicit dividend/split factor. It is calculated as "
-        "yf_div_split_factor_implied - "
-        "yf_div_split_factor_explicit, but small differences below the configured 1e-6 "
-        "tolerance are set to null. This field compares two related but not identical "
-        "views of the same yFinance source records: explicit factor math from the "
-        "event records themselves, and factor math implied by yFinance's "
-        "adjusted-close chain. For ordinary cash dividends, a small positive "
-        "difference can be normal because the explicit cash factor uses "
-        "1 + cash_amount / prior_yfinance_close, while the backward-adjusted close "
-        "chain implies prior_yfinance_close / (prior_yfinance_close - cash_amount). "
-        "Larger non-null values are a guardrail for cases where yFinance's "
-        "adjusted-return chain may not reconcile cleanly to yFinance's explicit "
-        "event records."
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        "Material adjusted-return difference between Massive and yFinance, using the "
+        "sign convention ms_return - yf_return. Positive means Massive's adjusted "
+        "return is higher than yFinance's; negative means Massive's adjusted return "
+        "is lower. Differences below the configured 1e-4 tolerance are set to null."
     ),
     "event_bucket": (
         "External research classification for the identified real-world explanation. "
@@ -375,8 +334,8 @@ DATA_DICTIONARY = {
         "- MEDIUM = more investigative Massive review, such as an unresolved "
         "adjusted-return calculation issue or higher-score anomaly.\n"
         "- HIGH = direct Massive fix candidate, such as missing event adjustment, "
-        "event-date mismatch, adjustment-factor continuity, or Massive dividend/split "
-        "return mismatch."
+        "event-date mismatch, adjustment-factor continuity, partial event capture, "
+        "or extra event capture."
     ),
     "massive_needs_fix": (
         "Boolean flag indicating whether Massive may require correction after "
@@ -385,8 +344,9 @@ DATA_DICTIONARY = {
         "research concludes likely_correct_source is YFINANCE or NEITHER, this is "
         "true. Without research, it follows Massive-focused reason codes such as "
         "missing event adjustment, event-date mismatch, adjustment-factor continuity "
-        "issue, dividend/split return mismatch, unresolved Massive adjusted-return "
-        "calculation issue, or high-score anomaly. Generic EVENT_SOURCE_MISMATCH "
+        "issue, partial event capture, extra event capture, unresolved Massive "
+        "adjusted-return calculation issue, or high-score anomaly. Generic "
+        "EVENT_SOURCE_MISMATCH "
         "rows require review but do not by themselves imply Massive needs a "
         "fix.\n\nPossible values, alphabetically:\n"
         "- false = Massive does not currently appear to need correction.\n"
@@ -439,31 +399,6 @@ DATA_DICTIONARY = {
     "ms_return": (
         "Final Massive adjusted return for the ticker/date, calculated from the "
         "percentage change in the pipeline's Massive adjusted close series."
-    ),
-    "ms_div_split_factor_explicit": (
-        "Massive dividend/split adjustment factor calculated directly from Massive's "
-        "explicit dividend and split records on the ticker/date, independent of "
-        "Massive's adjusted-close chain. For cash dividends, same-day cash amounts "
-        "are summed first and the factor is 1 + total_cash_amount / prior_close. "
-        "For splits, the factor is split_to / split_from. If cash and split events "
-        "occur on the same date, their factors are multiplied. This is the "
-        "source-record view of the adjustment; it is not a claim that Massive is "
-        "economically correct."
-        + DIV_SPLIT_EXPLICIT_EXAMPLE
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
-    ),
-    "ms_div_split_factor_implied": (
-        "Massive dividend/split adjustment factor inferred from the relationship "
-        "between the pipeline's reconstructed Massive adjusted return and Massive "
-        "raw price return: (1 + ms_return) / (1 + ms_return_price). This is the "
-        "adjusted-close-chain view of the adjustment, not a direct read from "
-        "Massive event records. It is expected to be close to "
-        "ms_div_split_factor_explicit, but it may not be identical. In particular, "
-        "cash dividends can differ slightly because the explicit field uses "
-        "1 + cash_amount / prior_close, while the backward-adjusted close chain "
-        "implies prior_close / (prior_close - cash_amount)."
-        + DIV_SPLIT_IMPLIED_EXAMPLE
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
     "ms_return_price": (
         "Massive raw price return from unadjusted closes, calculated as the percentage "
@@ -545,6 +480,80 @@ DATA_DICTIONARY = {
         "Final yFinance adjusted return for the ticker/date, calculated from the "
         "percentage change in yFinance adjusted close."
     ),
+    "yf_return_price": (
+        "yFinance raw price return from unadjusted closes, calculated as the "
+        "percentage change from the prior yFinance unadjusted close to the current "
+        "yFinance unadjusted close for the same ticker."
+    ),
+}
+
+# For columns that are fully used and implemented, but too confusing or irreleveant to present to
+# the user.  This way, we can keep their definitions for possible future exposure without
+# cluttering the public-facing data dictionary.
+DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
+    "massive_event_return_explains_yf_gap": (
+        "Internal real-world-research support flag. True when research identifies "
+        "Massive as the likely correct source, Massive has a same-day "
+        "dividend/split marker, yFinance has no same-day dividend/split marker, "
+        "and Massive's explicit dividend/split factor impact reconciles to "
+        "diff_return within the configured real-world event return tolerance. This "
+        "field is used to support post-research reason-code ownership overrides; "
+        "it is not intended as a user-facing report column."
+    ),
+    "diff_ms_div_split_factor": (
+        "Difference between Massive implied dividend/split factor and Massive "
+        "explicit dividend/split factor. It is calculated as "
+        "ms_div_split_factor_implied - "
+        "ms_div_split_factor_explicit, but small differences below the configured 1e-6 "
+        "tolerance are set to null. This field compares two related but not identical "
+        "views of the same Massive source records: explicit factor math from the "
+        "event records themselves, and factor math implied by the reconstructed "
+        "backward-adjusted close chain. For ordinary cash dividends, a small positive "
+        "difference can be normal because the explicit cash factor uses "
+        "1 + cash_amount / prior_close, while the backward-adjusted close chain "
+        "implies prior_close / (prior_close - cash_amount). Larger non-null values "
+        "are a guardrail for cases where Massive's adjusted-return chain may not "
+        "reconcile cleanly to Massive's explicit event records." + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+    ),
+    "diff_yf_div_split_factor": (
+        "Difference between yFinance implied dividend/split factor and yFinance "
+        "explicit dividend/split factor. It is calculated as "
+        "yf_div_split_factor_implied - "
+        "yf_div_split_factor_explicit, but small differences below the configured 1e-6 "
+        "tolerance are set to null. This field compares two related but not identical "
+        "views of the same yFinance source records: explicit factor math from the "
+        "event records themselves, and factor math implied by yFinance's "
+        "adjusted-close chain. For ordinary cash dividends, a small positive "
+        "difference can be normal because the explicit cash factor uses "
+        "1 + cash_amount / prior_yfinance_close, while the backward-adjusted close "
+        "chain implies prior_yfinance_close / (prior_yfinance_close - cash_amount). "
+        "Larger non-null values are a guardrail for cases where yFinance's "
+        "adjusted-return chain may not reconcile cleanly to yFinance's explicit "
+        "event records." + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+    ),
+    "ms_div_split_factor_explicit": (
+        "Massive dividend/split adjustment factor calculated directly from Massive's "
+        "explicit dividend and split records on the ticker/date, independent of "
+        "Massive's adjusted-close chain. For cash dividends, same-day cash amounts "
+        "are summed first and the factor is 1 + total_cash_amount / prior_close. "
+        "For splits, the factor is split_to / split_from. If cash and split events "
+        "occur on the same date, their factors are multiplied. This is the "
+        "source-record view of the adjustment; it is not a claim that Massive is "
+        "economically correct." + DIV_SPLIT_EXPLICIT_EXAMPLE + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+    ),
+    "ms_div_split_factor_implied": (
+        "Massive dividend/split adjustment factor inferred from the relationship "
+        "between the pipeline's reconstructed Massive adjusted return and Massive "
+        "raw price return: (1 + ms_return) / (1 + ms_return_price). This is the "
+        "adjusted-close-chain view of the adjustment, not a direct read from "
+        "Massive event records. It is expected to be close to "
+        "ms_div_split_factor_explicit, but it may not be identical. In particular, "
+        "cash dividends can differ slightly because the explicit field uses "
+        "1 + cash_amount / prior_close, while the backward-adjusted close chain "
+        "implies prior_close / (prior_close - cash_amount)."
+        + DIV_SPLIT_IMPLIED_EXAMPLE
+        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+    ),
     "yf_div_split_factor_explicit": (
         "yFinance dividend/split adjustment factor calculated directly from "
         "yFinance's explicit dividend and split records on the ticker/date, "
@@ -568,11 +577,6 @@ DATA_DICTIONARY = {
         "(prior_yfinance_close - cash_amount)."
         + DIV_SPLIT_IMPLIED_EXAMPLE
         + DIV_SPLIT_CASH_DENOMINATOR_NOTE
-    ),
-    "yf_return_price": (
-        "yFinance raw price return from unadjusted closes, calculated as the "
-        "percentage change from the prior yFinance unadjusted close to the current "
-        "yFinance unadjusted close for the same ticker."
     ),
 }
 

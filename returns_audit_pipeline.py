@@ -164,10 +164,10 @@ def build_returns_audit_lf(
             .otherwise(pl.col("yf_adj_close") / pl.col("yf_close"))
             .alias("yf_adj_factor")
         )
-        # Sign convention: diff_return later uses yFinance minus Massive.
-        # Positive means yFinance return is higher; negative means yFinance
-        # return is lower.
-        .with_columns((pl.col("yf_return") - pl.col("ms_return")).alias("total_return_diff"))
+        # Sign convention: diff_return uses Massive minus yFinance.
+        # Positive means Massive return is higher; negative means Massive return
+        # is lower.
+        .with_columns((pl.col("ms_return") - pl.col("yf_return")).alias("total_return_diff"))
         .sort(["ticker", "date"])
         .with_columns(
             pl.col("total_return_diff").shift(1).over("ticker").alias("prior_total_return_diff"),
@@ -288,8 +288,10 @@ def build_returns_audit_lf(
                 & (_factor_impact_expr("ms_div_split_factor_explicit").abs() > schema.TOLERANCE_4)
                 & (_factor_impact_expr("yf_div_split_factor_explicit").abs() > schema.TOLERANCE_4)
                 & (
-                    (pl.col("ms_div_split_factor_explicit") - pl.col("yf_div_split_factor_explicit"))
-                    .abs()
+                    (
+                        pl.col("ms_div_split_factor_explicit")
+                        - pl.col("yf_div_split_factor_explicit")
+                    ).abs()
                     > schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
                 & (
@@ -305,8 +307,8 @@ def build_returns_audit_lf(
             # the adjusted-return gap reconciles to that missing event-impact
             # piece. This captures cases such as base-plus-variable dividends
             # where Massive records only the base component. The sign check uses
-            # diff_return = yFinance - Massive, so a missing positive Massive event
-            # should make yFinance's return higher by the missing event amount.
+            # diff_return = Massive - yFinance, so a missing positive Massive event
+            # should make Massive's return lower by the missing event amount.
             (
                 pl.col("has_div_split_mismatch")
                 & pl.col("has_ms_event")
@@ -325,7 +327,7 @@ def build_returns_audit_lf(
                             _factor_impact_expr("yf_div_split_factor_explicit")
                             - _factor_impact_expr("ms_div_split_factor_explicit")
                         )
-                        - pl.col("diff_return")
+                        + pl.col("diff_return")
                     ).abs()
                     <= schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
@@ -342,8 +344,8 @@ def build_returns_audit_lf(
             # reconciles to the excess event-impact piece. This covers exact
             # duplicates such as ca:0.65 ca:0.65 versus ca:0.65, as well as extra
             # same-day components that are not supported by the comparison source.
-            # With diff_return = yFinance - Massive, an extra positive Massive
-            # event should push diff_return negative by the excess amount.
+            # With diff_return = Massive - yFinance, an extra positive Massive
+            # event should push diff_return positive by the excess amount.
             (
                 pl.col("has_div_split_mismatch")
                 & pl.col("has_ms_event")
@@ -362,7 +364,7 @@ def build_returns_audit_lf(
                             _factor_impact_expr("ms_div_split_factor_explicit")
                             - _factor_impact_expr("yf_div_split_factor_explicit")
                         )
-                        + pl.col("diff_return")
+                        - pl.col("diff_return")
                     ).abs()
                     <= schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
@@ -459,7 +461,7 @@ def build_returns_audit_lf(
                         # explicit factor impact when it reconciles.
                         (
                             pl.col("total_return_diff")
-                            - _factor_impact_expr("yf_div_split_factor_explicit")
+                            + _factor_impact_expr("yf_div_split_factor_explicit")
                         ).abs()
                         <= schema.TOLERANCE_4
                     )
@@ -471,7 +473,7 @@ def build_returns_audit_lf(
                         # by yFinance's adjusted/raw return relationship.
                         (
                             pl.col("total_return_diff")
-                            - _factor_impact_expr("yf_div_split_factor_implied")
+                            + _factor_impact_expr("yf_div_split_factor_implied")
                         ).abs()
                         <= schema.TOLERANCE_4
                     )
@@ -576,7 +578,6 @@ def build_returns_audit_lf(
             "rolling_mad_return",
             "robust_z",
             # Deterministic analysis diagnostics
-            "analysis_sheet",
             "analysis_reason_code",
             "analysis_confidence",
             # Massive-focused diagnostics

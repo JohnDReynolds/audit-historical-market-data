@@ -106,16 +106,16 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
         & pl.col("expected_return_impact").is_not_null()
     )
 
-    # Signed reconciliation matters because diff_return = yFinance - Massive.
+    # Signed reconciliation matters because diff_return = Massive - yFinance.
     # If Massive is correct and yFinance missed a positive event, diff_return
-    # should be negative. If yFinance is correct and Massive missed the event,
-    # diff_return should be positive. This prevents a real event with the right
+    # should be positive. If yFinance is correct and Massive missed the event,
+    # diff_return should be negative. This prevents a real event with the right
     # magnitude but wrong direction from overriding the deterministic diagnosis.
     expected_diff_for_likely_source_expr: pl.Expr = (
         pl.when(pl.col("likely_correct_source") == "MASSIVE")
-        .then(-pl.col("expected_return_impact"))
-        .when(pl.col("likely_correct_source") == "YFINANCE")
         .then(pl.col("expected_return_impact"))
+        .when(pl.col("likely_correct_source") == "YFINANCE")
+        .then(-pl.col("expected_return_impact"))
         .otherwise(None)
     )
 
@@ -150,7 +150,7 @@ def apply_reason_overrides(df: pl.DataFrame) -> pl.DataFrame:
                 & (pl.col("yf_div_split") == "")
                 & pl.col("ms_div_split_factor_explicit").is_not_null()
                 & (
-                    (pl.col("diff_return") + (pl.col("ms_div_split_factor_explicit") - 1.0)).abs()
+                    (pl.col("diff_return") - (pl.col("ms_div_split_factor_explicit") - 1.0)).abs()
                     <= schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
             ).alias("massive_event_return_explains_yf_gap")

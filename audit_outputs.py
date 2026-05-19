@@ -108,7 +108,6 @@ def collect_returns_output(df_lf: pl.LazyFrame) -> pl.DataFrame:
                 "heuristic_anomaly_score",
                 # "diff_score",
                 # Deterministic analysis diagnostics
-                "analysis_sheet",
                 "analysis_reason_code",
                 "analysis_confidence",
                 # Massive-focused diagnostics

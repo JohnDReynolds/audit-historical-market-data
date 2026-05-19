@@ -17,7 +17,7 @@ def add_analysis_labels(
     frame: _FrameT,
     include_real_world_reason_codes: bool,
 ) -> _FrameT:
-    """Add analysis-sheet and confidence labels from reason codes.
+    """Add analysis confidence labels from reason codes.
 
     Args:
         frame:
@@ -28,11 +28,8 @@ def add_analysis_labels(
             assigned after real-world event research is joined.
 
     Returns:
-        Frame with ``analysis_sheet`` and ``analysis_confidence`` columns.
+        Frame with ``analysis_confidence`` column.
     """
-    yfinance_reason_codes: list[str] = [
-        "YF_DIV_SPLIT_RETURN_MISMATCH",
-    ]
     medium_confidence_reason_codes: list[str] = [
         "MS_MISSING_EVENT",
         "MS_EVENT_DATE_MISMATCH",
@@ -45,25 +42,11 @@ def add_analysis_labels(
     ]
 
     if include_real_world_reason_codes:
-        yfinance_reason_codes.extend(
-            [
-                "YF_EVENT_DATE_MISMATCH",
-                "YF_MISSING_EVENT",
-            ]
-        )
         medium_confidence_reason_codes.append("YF_MISSING_EVENT")
 
     return cast(
         _FrameT,
         frame.with_columns(
-            pl.when(pl.col("analysis_reason_code") == "")
-            .then(pl.lit(""))
-            .when(pl.col("analysis_reason_code") == "CLOSE_REVERSAL")
-            .then(pl.lit("Close reversals"))
-            .when(pl.col("analysis_reason_code").is_in(yfinance_reason_codes))
-            .then(pl.lit("yFinance probably incorrect"))
-            .otherwise(pl.lit("Everything else"))
-            .alias("analysis_sheet"),
             pl.when(pl.col("analysis_reason_code") == "")
             .then(pl.lit(""))
             .when(

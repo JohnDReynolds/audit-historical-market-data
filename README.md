@@ -312,13 +312,13 @@ The audit uses two vendor identities:
 `diff_return` follows this sign convention:
 
 ```text
-diff_return = yf_return - ms_return
+diff_return = ms_return - yf_return
 ```
 
 So:
 
-- positive `diff_return` means yFinance return is higher
-- negative `diff_return` means yFinance return is lower
+- positive `diff_return` means Massive return is higher
+- negative `diff_return` means Massive return is lower
 
 `expected_return_impact` is an incremental return impact, not a total event factor. For a split example:
 

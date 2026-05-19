@@ -352,11 +352,11 @@ Final yFinance adjusted return.
 diff_return:
 IMPORTANT SIGN CONVENTION:
 
-diff_return = yf_return - ms_return
+diff_return = ms_return - yf_return
 
 Therefore:
-- positive diff_return => yFinance return is higher
-- negative diff_return => yFinance return is lower
+- positive diff_return => Massive return is higher
+- negative diff_return => Massive return is lower
 
 --------------------------------------------------
 REVIEW / DIAGNOSTIC FIELDS
