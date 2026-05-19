@@ -4,6 +4,48 @@ This module intentionally contains only constants and column lists so the
 main audit module is easier to scan.
 """
 
+# Standard library imports.
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class _AuditColumn:
+    """Metadata for one audit output column.
+
+    The registry keeps stable column facts in one place: the internal name,
+    the user-facing description, optional display-name overrides, and group
+    membership used by report builders. Calculation logic should stay in the
+    audit pipeline; this class is intentionally just schema/display metadata.
+    """
+
+    # Internal field name used in Polars frames, CSV files, and joins.
+    name: str
+
+    # Data-dictionary text used for report tooltips and the generated PDF.
+    description: str = ""
+
+    # Optional explicit display label. Most columns use _default_display_name().
+    display_name: str | None = None
+
+    # Behavioral/display groups such as "narrative", "url", or "summary_omitted".
+    groups: frozenset[str] = frozenset()
+
+    def to_string(self) -> str:
+        """Return the internal column name for compatibility with plain strings."""
+        return self.name
+
+    def __str__(self) -> str:
+        """Return the internal column name in string contexts."""
+        return self.to_string()
+
+    def display_label(self) -> str:
+        """Return the user-facing display name for this column."""
+        if self.display_name is not None:
+            return self.display_name
+        return _default_display_name(self.name)
+
+
 # Constants.
 # Adjustment-factor changes can differ slightly when vendors encode the same
 # cash distribution or split mechanics differently. Five basis points is tight
@@ -22,7 +64,7 @@ TOLERANCE_4 = 0.0001
 TOLERANCE_6 = 0.000001
 
 
-REAL_WORLD_EVENT_BUCKETS: list[str] = [
+_REAL_WORLD_EVENT_BUCKETS: list[str] = [
     "DISTRIBUTION",
     "SPLIT",
     "SPINOFF",
@@ -41,23 +83,23 @@ REAL_WORLD_EVENT_RETURN_BUCKETS: list[str] = [
     "RIGHTS",
 ]
 
-DIV_SPLIT_EXAMPLE_INPUTS = (
+_DIV_SPLIT_EXAMPLE_INPUTS = (
     "\n\nWorked example: assume prior unadjusted close is 100.00, current "
     "unadjusted close is 51.00, the source records a 2-for-1 split, and the "
     "source records a 1.00 cash dividend on the same date. The raw price factor "
     "is 51.00 / 100.00 = 0.51, which is a -49.0000% raw price return."
 )
 
-DIV_SPLIT_EXPLICIT_EXAMPLE = (
-    DIV_SPLIT_EXAMPLE_INPUTS
+_DIV_SPLIT_EXPLICIT_EXAMPLE = (
+    _DIV_SPLIT_EXAMPLE_INPUTS
     + " For the explicit factor, use only source event records: split factor 2.0 "
     "times cash factor (1 + 1.00 / 100.00) = 2.02. This 2.02 value is an "
     "adjustment factor, not a standalone investment return. It offsets the "
     "mechanical raw price drop from the split when total return is calculated."
 )
 
-DIV_SPLIT_IMPLIED_EXAMPLE = (
-    DIV_SPLIT_EXAMPLE_INPUTS
+_DIV_SPLIT_IMPLIED_EXAMPLE = (
+    _DIV_SPLIT_EXAMPLE_INPUTS
     + " For the implied factor, use the adjusted/raw return relationship rather "
     "than reading event records directly. Under the backward-adjusted close "
     "convention, the prior close is adjusted by (1 / 2.0) * ((100.00 - 1.00) / "
@@ -68,7 +110,7 @@ DIV_SPLIT_IMPLIED_EXAMPLE = (
     "denominator as prior_close - cash_amount."
 )
 
-DIV_SPLIT_CASH_DENOMINATOR_NOTE = (
+_DIV_SPLIT_CASH_DENOMINATOR_NOTE = (
     "\n\nCash-dividend denominator note: for a cash-dividend-only adjustment, "
     "explicit and implied values may differ slightly because the explicit cash "
     "factor uses 1 + cash_amount / prior_close, while the backward-adjusted close "
@@ -490,7 +532,7 @@ DATA_DICTIONARY = {
 # For columns that are fully used and implemented, but too confusing or irreleveant to present to
 # the user.  This way, we can keep their definitions for possible future exposure without
 # cluttering the public-facing data dictionary.
-DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
+_DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
     "massive_event_return_explains_yf_gap": (
         "Internal real-world-research support flag. True when research identifies "
         "Massive as the likely correct source, Massive has a same-day "
@@ -513,7 +555,7 @@ DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
         "1 + cash_amount / prior_close, while the backward-adjusted close chain "
         "implies prior_close / (prior_close - cash_amount). Larger non-null values "
         "are a guardrail for cases where Massive's adjusted-return chain may not "
-        "reconcile cleanly to Massive's explicit event records." + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        "reconcile cleanly to Massive's explicit event records." + _DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
     "diff_yf_div_split_factor": (
         "Difference between yFinance implied dividend/split factor and yFinance "
@@ -529,7 +571,7 @@ DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
         "chain implies prior_yfinance_close / (prior_yfinance_close - cash_amount). "
         "Larger non-null values are a guardrail for cases where yFinance's "
         "adjusted-return chain may not reconcile cleanly to yFinance's explicit "
-        "event records." + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        "event records." + _DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
     "ms_div_split_factor_explicit": (
         "Massive dividend/split adjustment factor calculated directly from Massive's "
@@ -539,7 +581,7 @@ DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
         "For splits, the factor is split_to / split_from. If cash and split events "
         "occur on the same date, their factors are multiplied. This is the "
         "source-record view of the adjustment; it is not a claim that Massive is "
-        "economically correct." + DIV_SPLIT_EXPLICIT_EXAMPLE + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        "economically correct." + _DIV_SPLIT_EXPLICIT_EXAMPLE + _DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
     "ms_div_split_factor_implied": (
         "Massive dividend/split adjustment factor inferred from the relationship "
@@ -551,8 +593,8 @@ DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
         "cash dividends can differ slightly because the explicit field uses "
         "1 + cash_amount / prior_close, while the backward-adjusted close chain "
         "implies prior_close / (prior_close - cash_amount)."
-        + DIV_SPLIT_IMPLIED_EXAMPLE
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        + _DIV_SPLIT_IMPLIED_EXAMPLE
+        + _DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
     "yf_div_split_factor_explicit": (
         "yFinance dividend/split adjustment factor calculated directly from "
@@ -562,8 +604,8 @@ DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
         "is yFinance split_ratio. If multiple event records occur on the same date, "
         "their factors are multiplied. This is the source-record view of the "
         "adjustment; it is not a claim that yFinance is economically correct."
-        + DIV_SPLIT_EXPLICIT_EXAMPLE
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        + _DIV_SPLIT_EXPLICIT_EXAMPLE
+        + _DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
     "yf_div_split_factor_implied": (
         "yFinance dividend/split adjustment factor inferred from the relationship "
@@ -575,8 +617,8 @@ DATA_DICTIONARY_FUTURE_COLUMNS: dict[str, str] = {
         "explicit field uses 1 + cash_amount / prior yFinance close, while the "
         "backward-adjusted close chain implies prior_yfinance_close / "
         "(prior_yfinance_close - cash_amount)."
-        + DIV_SPLIT_IMPLIED_EXAMPLE
-        + DIV_SPLIT_CASH_DENOMINATOR_NOTE
+        + _DIV_SPLIT_IMPLIED_EXAMPLE
+        + _DIV_SPLIT_CASH_DENOMINATOR_NOTE
     ),
 }
 
@@ -612,7 +654,7 @@ CATEGORY_REPORT_COLUMNS: list[str] = [
     "heuristic_anomaly_score",  # optional
 ]
 
-CATEGORY_NON_ACTIONABLE: list[str] = [
+_CATEGORY_NON_ACTIONABLE: list[str] = [
     "CLOSE_REVERSAL",
     "YF_DIV_SPLIT_RETURN_MISMATCH",
     "YF_EVENT_DATE_MISMATCH",
@@ -636,8 +678,197 @@ PATH_AUDITED_ADJUSTED_OHLCV = f"{_OUTPUT_DIRECTORY}audited_adjusted_ohlcv"
 PATH_AUDITED_RETURNS = f"{_OUTPUT_DIRECTORY}audited_returns"
 
 
-# Vendor Prefixes
-VENDOR_PREFIX_MAP = {
+# Vendor prefixes are expanded in report display names while preserving the
+# original internal column name after the vendor label.
+_VENDOR_PREFIX_MAP = {
     "ms_": "Massive ",
     "yf_": "yFinance ",
 }
+
+
+def _default_display_name(column_name: str) -> str:
+    """Build the default report display name for an internal column name.
+
+    Vendor-prefixed columns intentionally keep the raw field name after the
+    vendor label, e.g. ``ms_return`` becomes ``Massive ms_return``. Other
+    columns use a simple underscore-to-space conversion.
+    """
+    for prefix, replacement in _VENDOR_PREFIX_MAP.items():
+        if column_name.startswith(prefix):
+            return f"{replacement}{column_name}"
+    return column_name.replace("_", " ")
+
+
+def _display_name(column_name: str) -> str:
+    """Return the report display name for an internal column name.
+
+    Unknown columns still get a reasonable default label so ad hoc or future
+    fields can appear in reports without first being added to the registry.
+    """
+    return _AUDIT_COLUMNS.get(column_name, _AuditColumn(column_name)).display_label()
+
+
+def display_column_names(column_names: Sequence[str]) -> dict[str, str]:
+    """Return display names keyed by internal column name."""
+    return {column_name: _display_name(column_name) for column_name in column_names}
+
+
+def column_description(column_name: str) -> str:
+    """Return the data-dictionary description for an internal column name.
+
+    Unknown columns return a blank description, which keeps report tooltips
+    optional rather than making every transient field a schema requirement.
+    """
+    return _AUDIT_COLUMNS.get(column_name, _AuditColumn(column_name)).description
+
+
+def summary_appended_columns() -> list[str]:
+    """Return detail columns appended back to summary reports, in report order."""
+    return list(_SUMMARY_APPENDED_COLUMNS)
+
+
+def column_names_in_group(group: str) -> set[str]:
+    """Return internal column names tagged with a registry group.
+
+    Use this when code is still working with raw DataFrame column names.
+    """
+    return {
+        column.name
+        for column in _AUDIT_COLUMNS.values()
+        if group in column.groups
+    }
+
+
+def display_names_in_group(group: str) -> set[str]:
+    """Return display column names tagged with a registry group.
+
+    Use this after report columns have been renamed for HTML/PDF output.
+    """
+    return {
+        column.display_label()
+        for column in _AUDIT_COLUMNS.values()
+        if group in column.groups
+    }
+
+
+def frozen_display_column_classes() -> dict[str, str]:
+    """Return sticky HTML table classes keyed by display column name.
+
+    Report rendering works with display names at this point, so the registry
+    converts raw column names before returning the class map.
+    """
+    return {
+        _display_name(column_name): class_names
+        for column_name, class_names in _FROZEN_COLUMN_CLASSES.items()
+    }
+
+
+def _column_groups(column_name: str) -> frozenset[str]:
+    """Return registry groups for a column name.
+
+    Groups are derived from the compatibility constants below so the first
+    registry phase can centralize metadata without changing existing report
+    ordering or public constants.
+    """
+    groups: set[str] = set()
+    for group_name, column_names in _COLUMN_GROUPS.items():
+        if column_name in column_names:
+            groups.add(group_name)
+    return frozenset(groups)
+
+
+def _build_audit_columns(column_names: Iterable[str]) -> dict[str, _AuditColumn]:
+    """Build audit column metadata from existing schema constants.
+
+    The registry is currently derived from ``DATA_DICTIONARY`` and
+    ``_DATA_DICTIONARY_FUTURE_COLUMNS``. That keeps the refactor
+    behavior-preserving while still giving callers a single metadata lookup.
+    """
+    return {
+        column_name: _AuditColumn(
+            name=column_name,
+            description=DATA_DICTIONARY.get(
+                column_name,
+                _DATA_DICTIONARY_FUTURE_COLUMNS.get(column_name, ""),
+            ),
+            groups=_column_groups(column_name),
+        )
+        for column_name in column_names
+    }
+
+
+# Columns whose text should wrap in HTML/PDF reports instead of being treated
+# like compact scalar values.
+_NARRATIVE_COLUMNS: set[str] = {
+    "evidence_summary",
+    "real_world_evidence",
+    "real_world_event",
+    "massive_problem_summary",
+    "massive_why_incorrect",
+    "massive_fix_action",
+    "massive_problem_and_fix",
+}
+
+# Columns rendered with status-style CSS classes when they have a value.
+_STATUS_COLUMNS: set[str] = {
+    "research_confidence",
+    "event_detected",
+    "likely_correct_source",
+}
+
+# Columns rendered as links in HTML and given URL-oriented PDF sizing.
+_URL_COLUMNS: set[str] = {
+    "primary_source_url",
+    "secondary_source_url",
+}
+
+# Columns kept sticky on the left edge of wide HTML report tables.
+_FROZEN_COLUMN_CLASSES: dict[str, str] = {
+    "ticker": "frozen-col frozen-ticker",
+    "date": "frozen-col frozen-date",
+}
+
+# Detail columns removed from summary reports. Some are replaced by synthesized
+# summary-only columns such as real_world_evidence or massive_problem_and_fix.
+_SUMMARY_OMITTED_COLUMNS: set[str] = {
+    "likely_correct_source",
+    "research_confidence",
+    "primary_source_url",
+    "secondary_source_url",
+    "analysis_reason_code",
+    "expected_return_impact",
+    "evidence_summary",
+    "real_world_event",
+    "massive_problem_summary",
+    "massive_why_incorrect",
+    "massive_fix_action",
+    "ms_return",
+    "yf_return",
+    "diff_return",
+    "heuristic_anomaly_score",
+}
+
+# Detail columns appended back to summary reports for compact numeric context.
+_SUMMARY_APPENDED_COLUMNS: list[str] = [
+    "ms_return",
+    "yf_return",
+]
+
+# Group names provide stable query points for report builders while preserving
+# the readable list/set constants above.
+_COLUMN_GROUPS: dict[str, set[str]] = {
+    "category_report": set(CATEGORY_REPORT_COLUMNS),
+    "narrative": _NARRATIVE_COLUMNS,
+    "status": _STATUS_COLUMNS,
+    "url": _URL_COLUMNS,
+    "frozen": set(_FROZEN_COLUMN_CLASSES),
+    "summary_omitted": _SUMMARY_OMITTED_COLUMNS,
+    "summary_appended": set(_SUMMARY_APPENDED_COLUMNS),
+    "future": set(_DATA_DICTIONARY_FUTURE_COLUMNS),
+}
+
+# Central metadata registry. This is the preferred source for column
+# descriptions, display labels, and group membership.
+_AUDIT_COLUMNS: dict[str, _AuditColumn] = _build_audit_columns(
+    DATA_DICTIONARY.keys() | _DATA_DICTIONARY_FUTURE_COLUMNS.keys()
+)

@@ -11,7 +11,6 @@ from audit import Audit
 import utilities as util
 
 # Constants
-# _DO_QA = True
 _FROM_DATE = "2021-05-16"
 _TO_DATE = "2026-05-16"
 
@@ -20,16 +19,13 @@ _TO_DATE = "2026-05-16"
 # output for human review.
 _NON_DETERMINISTIC_COLUMNS = (
     "evidence summary",
-    # "massive fix action",
-    # "massive problem summary",
-    # "massive why incorrect",
     "primary source url",
     "real world event",
     "secondary source url",
 )
 
 
-def main() -> None:
+def _main() -> None:
     """Run the demo audit and compare generated reports to known-good verified files."""
 
     # Perform audit
@@ -37,7 +33,7 @@ def main() -> None:
         tickers=util.load_single_column("inputs/tickers"),
         from_date=_FROM_DATE,
         to_date=_TO_DATE,
-        # always_download=False, default
+        always_download=False,
     )
 
     # Print ohlcv audit results.  Squeaky clean, probably always empty.
@@ -68,11 +64,11 @@ def main() -> None:
             output_path=csv_test_path,
             exclude_columns=_NON_DETERMINISTIC_COLUMNS,
         )
-        subprocess.run(["diff", csv_test_path, f"{csv_path}.verified"], check=False)
+        subprocess.run(["diff", csv_test_path, f"{csv_path}.verified"], check=True)
 
     # Write the data dictionary PDF
     audit.pdf_data_dictionary("outputs/data_dictionary.pdf")
 
 
 if __name__ == "__main__":
-    main()
+    _main()

@@ -15,7 +15,7 @@ from pathlib import Path
 import polars as pl
 
 # Constants
-ENCODING = "utf-8"
+_ENCODING = "utf-8"
 
 
 def write_text_create_parent(output_path: str | Path, content: str) -> None:
@@ -30,7 +30,7 @@ def write_text_create_parent(output_path: str | Path, content: str) -> None:
     """
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding=ENCODING)
+    path.write_text(content, encoding=_ENCODING)
 
 
 def load_single_column(file_path: str | Path) -> tuple[str, ...]:
@@ -131,7 +131,7 @@ def safe_csv_dict_writer(
             output_csv_path,
             mode="w",
             newline="",
-            encoding=ENCODING,
+            encoding=_ENCODING,
         ) as csv_file:
             writer: csv.DictWriter[str] = csv.DictWriter(
                 csv_file,

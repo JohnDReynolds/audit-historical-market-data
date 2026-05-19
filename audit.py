@@ -244,17 +244,7 @@ class Audit:
         Returns:
             Mapping from internal column names to display column names.
         """
-        display_column_names: dict[str, str] = {}
-
-        for key in column_names:
-            for prefix, replacement in schema.VENDOR_PREFIX_MAP.items():
-                if key.startswith(prefix):
-                    display_column_names[key] = f"{replacement}{key}"
-                    break
-            else:
-                display_column_names[key] = key.replace("_", " ")
-
-        return display_column_names
+        return schema.display_column_names(column_names)
 
     def html_audit_report(
         self,
@@ -340,27 +330,8 @@ class Audit:
                     joined_text_expr(real_world_evidence_columns).alias(real_world_evidence_column)
                 )
 
-            summary_omitted_columns = {
-                "likely_correct_source",
-                "research_confidence",
-                "primary_source_url",
-                "secondary_source_url",
-                "analysis_reason_code",
-                "expected_return_impact",
-                "evidence_summary",
-                "real_world_event",
-                "massive_problem_summary",
-                "massive_why_incorrect",
-                "massive_fix_action",
-                "ms_return",
-                "yf_return",
-                "diff_return",
-                "heuristic_anomaly_score",
-            }
-            summary_appended_columns = [
-                "ms_return",
-                "yf_return",
-            ]
+            summary_omitted_columns = schema.column_names_in_group("summary_omitted")
+            summary_appended_columns = schema.summary_appended_columns()
             kept_columns: list[str] = []
             for column_name in raw_df.columns:
                 if (
@@ -392,27 +363,11 @@ class Audit:
         }
         df = raw_df.rename(display_column_names)
 
-        narrative_columns = {
-            "evidence summary",
-            "real world evidence",
-            "real world event",
-            "massive problem summary",
-            "massive why incorrect",
-            "massive fix action",
-            "massive problem and fix",
-        }
+        narrative_columns = schema.display_names_in_group("narrative")
         priority_column = "review priority"
-        status_columns = {
-            "research confidence",
-            "event detected",
-            "likely correct source",
-            # "massive fix priority", # It seems to always be HIGH, so it looks weird colored.
-        }
-        url_columns = {"primary source url", "secondary source url"}
-        frozen_column_classes = {
-            "ticker": "frozen-col frozen-ticker",
-            "date": "frozen-col frozen-date",
-        }
+        status_columns = schema.display_names_in_group("status")
+        url_columns = schema.display_names_in_group("url")
+        frozen_column_classes = schema.frozen_display_column_classes()
 
         def escape(value: str) -> str:
             """Escape HTML text without changing slashes.
@@ -644,10 +599,7 @@ class Audit:
         df = df.with_columns(pl.col(pl.Float64).round(schema.DISPLAY_DECIMALS))
         fieldnames = df.columns
         header_tooltips = {
-            fieldname: schema.DATA_DICTIONARY.get(
-                display_to_raw_column_names.get(fieldname, ""),
-                "",
-            )
+            fieldname: schema.column_description(display_to_raw_column_names.get(fieldname, ""))
             for fieldname in fieldnames
         }
         rows = [
