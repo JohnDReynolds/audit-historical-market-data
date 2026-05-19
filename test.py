@@ -8,6 +8,7 @@ import subprocess
 
 # Project imports
 from audit import Audit
+import forensic_docs_validation
 import utilities as util
 
 # Constants
@@ -27,6 +28,7 @@ _NON_DETERMINISTIC_COLUMNS = (
 
 def _main() -> None:
     """Run the demo audit and compare generated reports to known-good verified files."""
+    forensic_docs_validation.validate_forensic_docs()
 
     # Perform audit
     audit = Audit(

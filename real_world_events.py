@@ -10,20 +10,7 @@ import audit_schema as schema
 # Type aliases.
 _FrameT = TypeVar("_FrameT", pl.DataFrame, pl.LazyFrame)
 
-# Constants.
-REQUIRED_REAL_WORLD_EVENT_COLUMNS: set[str] = {
-    "ticker",
-    "date",
-    "event_detected",
-    "event_bucket",
-    "expected_return_impact",
-    "likely_correct_source",
-    "research_confidence",
-    "evidence_summary",
-    "real_world_event",
-    "primary_source_url",
-    "secondary_source_url",
-}
+REQUIRED_REAL_WORLD_EVENT_COLUMNS: set[str] = schema.REQUIRED_REAL_WORLD_EVENT_COLUMNS
 
 
 def add_placeholder_columns(frame: _FrameT) -> _FrameT:
@@ -40,15 +27,14 @@ def add_placeholder_columns(frame: _FrameT) -> _FrameT:
     return cast(
         _FrameT,
         frame.with_columns(
-            pl.lit("").alias("event_detected"),
-            pl.lit("").alias("event_bucket"),
-            pl.lit(None, dtype=pl.Float64).alias("expected_return_impact"),
-            pl.lit("").alias("likely_correct_source"),
-            pl.lit("").alias("research_confidence"),
-            pl.lit("").alias("evidence_summary"),
-            pl.lit("").alias("real_world_event"),
-            pl.lit("").alias("primary_source_url"),
-            pl.lit("").alias("secondary_source_url"),
+            *[
+                (
+                    pl.lit(None, dtype=pl.Float64)
+                    if column_name == "expected_return_impact"
+                    else pl.lit("")
+                ).alias(column_name)
+                for column_name in schema.REAL_WORLD_EVENT_COLUMNS
+            ],
         ),
     )
 
@@ -255,7 +241,7 @@ def assert_output_columns(df: pl.DataFrame) -> None:
         AssertionError:
             Raised if a required real-world event output column is missing.
     """
-    for column_name in REQUIRED_REAL_WORLD_EVENT_COLUMNS - {"ticker", "date"}:
+    for column_name in schema.REAL_WORLD_EVENT_COLUMNS:
         if column_name not in df.columns:
             raise AssertionError(f"audit_returns() must persist {column_name} before writing CSV.")
 

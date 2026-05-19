@@ -1,7 +1,7 @@
 """Build the detailed return-audit Polars pipeline."""
 
 # Standard library imports.
-from typing import cast
+from typing import NamedTuple, cast
 
 # Third-party imports.
 import polars as pl
@@ -39,6 +39,148 @@ def _factor_impact_expr(column_name: str) -> pl.Expr:
     return pl.col(column_name) - 1.0
 
 
+def _factor_diff_expr(
+    implied_factor_column: str,
+    explicit_factor_column: str,
+) -> pl.Expr:
+    """Return a material implied-minus-explicit factor difference expression."""
+    factor_diff: pl.Expr = pl.col(implied_factor_column) - pl.col(explicit_factor_column)
+
+    return (
+        pl.when(pl.col(implied_factor_column).is_null() | pl.col(explicit_factor_column).is_null())
+        .then(None)
+        .when(factor_diff.abs() < schema.TOLERANCE_6)
+        .then(None)
+        .otherwise(factor_diff)
+    )
+
+
+def _factor_change_expr(current_factor_column: str, prior_factor_column: str) -> pl.Expr:
+    """Return current/prior factor change while protecting null and zero priors."""
+    return (
+        pl.when(pl.col(prior_factor_column).is_null() | (pl.col(prior_factor_column) == 0.0))
+        .then(None)
+        .otherwise((pl.col(current_factor_column) / pl.col(prior_factor_column)) - 1.0)
+    )
+
+
+def _source_price_event_return_expr() -> pl.Expr:
+    """Return source price event return from yFinance raw return over Massive raw return."""
+    return (
+        pl.when(
+            pl.col("ms_return_price").is_null()
+            | pl.col("yf_return_price").is_null()
+            | ((1.0 + pl.col("ms_return_price")) == 0.0)
+        )
+        .then(None)
+        .otherwise(((1.0 + pl.col("yf_return_price")) / (1.0 + pl.col("ms_return_price"))) - 1.0)
+    )
+
+
+def _close_reversal_expr(neighbor_total_return_diff_column: str) -> pl.Expr:
+    """Return whether total-return differences reverse against an adjacent row."""
+    return (
+        (pl.col("total_return_diff") * pl.col(neighbor_total_return_diff_column) < 0.0)
+        & (pl.col("total_return_diff").abs() > schema.TOLERANCE_4)
+        & (pl.col(neighbor_total_return_diff_column).abs() > schema.TOLERANCE_4)
+        & (
+            (pl.col("total_return_diff") + pl.col(neighbor_total_return_diff_column)).abs()
+            <= schema.REVERSAL_TOLERANCE
+        )
+    )
+
+
+class _ReturnSourceFrames(NamedTuple):
+    """Intermediate source frames used to assemble the return-audit pipeline."""
+
+    adjusted_lf: pl.LazyFrame
+    yfinance_lookup_lf: pl.LazyFrame
+    ms_explicit_factor_lf: pl.LazyFrame
+    yf_explicit_factor_lf: pl.LazyFrame
+    ms_div_split_lf: pl.LazyFrame
+    yf_div_split_lf: pl.LazyFrame
+
+
+def _build_return_source_frames(
+    massive_data: MassiveData,
+    yfinance_data: YFinanceData,
+) -> _ReturnSourceFrames:
+    """Build normalized source frames used by the return-audit reconciliation."""
+    yfinance_lookup_lf: pl.LazyFrame = returns_builders.build_yfinance_lookup_lf(yfinance_data)
+    close_lf: pl.LazyFrame = returns_builders.build_close_lf(massive_data)
+
+    close_with_prior_lf: pl.LazyFrame = close_lf.with_columns(
+        pl.col("close").shift(1).over("ticker").alias("prior_close")
+    )
+
+    yfinance_close_with_prior_lf: pl.LazyFrame = (
+        returns_builders.build_yfinance_close_with_prior_lf(
+            yfinance_lookup_lf,
+        )
+    )
+
+    cumulative_factors_lf: pl.LazyFrame = returns_builders.build_cumulative_factors_lf(
+        massive_data,
+        close_lf,
+        close_with_prior_lf,
+    )
+
+    return _ReturnSourceFrames(
+        adjusted_lf=returns_builders.build_massive_adjusted_returns_lf(
+            close_lf,
+            cumulative_factors_lf,
+        ),
+        yfinance_lookup_lf=yfinance_lookup_lf,
+        ms_explicit_factor_lf=returns_builders.build_massive_explicit_factor_lf(
+            massive_data,
+            close_with_prior_lf,
+        ),
+        yf_explicit_factor_lf=returns_builders.build_yfinance_explicit_factor_lf(
+            yfinance_data,
+            yfinance_close_with_prior_lf,
+        ),
+        ms_div_split_lf=returns_builders.build_massive_div_split_lf(massive_data),
+        yf_div_split_lf=returns_builders.build_yfinance_div_split_lf(yfinance_data),
+    )
+
+
+def _add_pre_research_classification_columns(df_lf: pl.LazyFrame) -> pl.LazyFrame:
+    """Add deterministic classification, guidance, placeholders, and review columns."""
+    df_lf = audit_classification.add_analysis_reason_code(df_lf)
+
+    df_lf = audit_classification.add_analysis_labels(df_lf, include_real_world_reason_codes=False)
+
+    df_lf = audit_classification.add_massive_fix_guidance(
+        df_lf,
+        pl.col("analysis_reason_code").is_in(
+            [
+                "MS_MISSING_EVENT",
+                "MS_EVENT_DATE_MISMATCH",
+                "MS_ADJ_FACTOR_CONTINUITY",
+                "MS_RETURN_METHOD_UNRESOLVED",
+                "HIGH_SCORE_ANOMALY",
+            ]
+        ),
+    )
+
+    # Add placeholder real-world-event columns before review columns are
+    # calculated so downstream expressions can safely reference them.
+    df_lf = cast(pl.LazyFrame, real_world_events.add_placeholder_columns(df_lf))  # type: ignore
+
+    return audit_classification.add_review_columns(df_lf)
+
+
+def _select_return_audit_columns(df_lf: pl.LazyFrame) -> pl.LazyFrame:
+    """Apply stable public aliases and select the detailed return-audit schema."""
+    return df_lf.with_columns(
+        pl.col("close").alias("ms_close"),
+        pl.col("adj_factor").alias("ms_adj_factor"),
+        pl.col("adj_close").alias("ms_adj_close"),
+    ).select(
+        schema.RETURN_AUDIT_ALL_COLUMNS,
+    )
+
+
 def build_returns_audit_lf(
     massive_data: MassiveData,
     yfinance_data: YFinanceData,
@@ -59,53 +201,22 @@ def build_returns_audit_lf(
     # Build each source's return and event components separately first. The
     # pipeline later joins them by ticker/date so every diagnostic can compare
     # Massive and yFinance using the same row-level vocabulary.
-    yfinance_lookup_lf: pl.LazyFrame = returns_builders.build_yfinance_lookup_lf(yfinance_data)
-    close_lf: pl.LazyFrame = returns_builders.build_close_lf(massive_data)
-
-    close_with_prior_lf: pl.LazyFrame = close_lf.with_columns(
-        pl.col("close").shift(1).over("ticker").alias("prior_close")
-    )
-
-    yfinance_close_with_prior_lf: pl.LazyFrame = (
-        returns_builders.build_yfinance_close_with_prior_lf(
-            yfinance_lookup_lf,
-        )
-    )
-
-    cumulative_factors_lf: pl.LazyFrame = returns_builders.build_cumulative_factors_lf(
+    source_frames: _ReturnSourceFrames = _build_return_source_frames(
         massive_data,
-        close_lf,
-        close_with_prior_lf,
-    )
-
-    ms_explicit_factor_lf: pl.LazyFrame = returns_builders.build_massive_explicit_factor_lf(
-        massive_data,
-        close_with_prior_lf,
-    )
-    yf_explicit_factor_lf: pl.LazyFrame = returns_builders.build_yfinance_explicit_factor_lf(
         yfinance_data,
-        yfinance_close_with_prior_lf,
     )
-
-    adjusted_lf: pl.LazyFrame = returns_builders.build_massive_adjusted_returns_lf(
-        close_lf,
-        cumulative_factors_lf,
-    )
-
-    ms_div_split_lf: pl.LazyFrame = returns_builders.build_massive_div_split_lf(massive_data)
-    yf_div_split_lf: pl.LazyFrame = returns_builders.build_yfinance_div_split_lf(yfinance_data)
 
     # Event marker strings are informational but important for classification:
     # they identify which source explicitly reported a dividend/split event on
     # the trading date.
-    adjusted_lf = adjusted_lf.join(
-        ms_div_split_lf,
+    adjusted_lf: pl.LazyFrame = source_frames.adjusted_lf.join(
+        source_frames.ms_div_split_lf,
         on=["ticker", "date"],
         how="left",
     ).with_columns(pl.col("ms_div_split").fill_null(""))
 
     adjusted_lf = adjusted_lf.join(
-        yf_div_split_lf,
+        source_frames.yf_div_split_lf,
         on=["ticker", "date"],
         how="left",
     ).with_columns(pl.col("yf_div_split").fill_null(""))
@@ -135,17 +246,17 @@ def build_returns_audit_lf(
             ]
         )
         .join(
-            yfinance_lookup_lf,
+            source_frames.yfinance_lookup_lf,
             on=["ticker", "date"],
             how="left",
         )
         .join(
-            ms_explicit_factor_lf,
+            source_frames.ms_explicit_factor_lf,
             on=["ticker", "date"],
             how="left",
         )
         .join(
-            yf_explicit_factor_lf,
+            source_frames.yf_explicit_factor_lf,
             on=["ticker", "date"],
             how="left",
         )
@@ -185,18 +296,12 @@ def build_returns_audit_lf(
             # usually appear in both event records or be explainable by a known
             # denominator difference; an unexplained vendor-only factor move is a
             # continuity warning.
-            pl.when(
-                pl.col("prior_ms_adj_factor").is_null() | (pl.col("prior_ms_adj_factor") == 0.0)
-            )
-            .then(None)
-            .otherwise((pl.col("adj_factor") / pl.col("prior_ms_adj_factor")) - 1.0)
-            .alias("ms_adj_factor_change"),
-            pl.when(
-                pl.col("prior_yf_adj_factor").is_null() | (pl.col("prior_yf_adj_factor") == 0.0)
-            )
-            .then(None)
-            .otherwise((pl.col("yf_adj_factor") / pl.col("prior_yf_adj_factor")) - 1.0)
-            .alias("yf_adj_factor_change"),
+            _factor_change_expr("adj_factor", "prior_ms_adj_factor").alias(
+                "ms_adj_factor_change"
+            ),
+            _factor_change_expr("yf_adj_factor", "prior_yf_adj_factor").alias(
+                "yf_adj_factor_change"
+            ),
         )
         .with_columns(
             (pl.col("yf_adj_factor_change") - pl.col("ms_adj_factor_change")).alias(
@@ -226,38 +331,14 @@ def build_returns_audit_lf(
             # source-event factor. A non-null diff means the source's adjusted
             # return does not reconcile cleanly to its own event data under the
             # same factor convention.
-            pl.when(
-                pl.col("ms_div_split_factor_implied").is_null()
-                | pl.col("ms_div_split_factor_explicit").is_null()
-            )
-            .then(None)
-            .when(
-                (
-                    pl.col("ms_div_split_factor_implied") - pl.col("ms_div_split_factor_explicit")
-                ).abs()
-                < schema.TOLERANCE_6
-            )
-            .then(None)
-            .otherwise(
-                pl.col("ms_div_split_factor_implied") - pl.col("ms_div_split_factor_explicit")
-            )
-            .alias("diff_ms_div_split_factor"),
-            pl.when(
-                pl.col("yf_div_split_factor_implied").is_null()
-                | pl.col("yf_div_split_factor_explicit").is_null()
-            )
-            .then(None)
-            .when(
-                (
-                    pl.col("yf_div_split_factor_implied") - pl.col("yf_div_split_factor_explicit")
-                ).abs()
-                < schema.TOLERANCE_6
-            )
-            .then(None)
-            .otherwise(
-                (pl.col("yf_div_split_factor_implied") - pl.col("yf_div_split_factor_explicit"))
-            )
-            .alias("diff_yf_div_split_factor"),
+            _factor_diff_expr(
+                "ms_div_split_factor_implied",
+                "ms_div_split_factor_explicit",
+            ).alias("diff_ms_div_split_factor"),
+            _factor_diff_expr(
+                "yf_div_split_factor_implied",
+                "yf_div_split_factor_explicit",
+            ).alias("diff_yf_div_split_factor"),
         )
         .with_columns(
             # These flags separate source-event presence, factor math
@@ -378,16 +459,7 @@ def build_returns_audit_lf(
             # Source price event return captures a gap between raw price returns.
             # Split-like events often appear here because the two sources may
             # carry different unadjusted price scales on the event date.
-            pl.when(
-                pl.col("ms_return_price").is_null()
-                | pl.col("yf_return_price").is_null()
-                | ((1.0 + pl.col("ms_return_price")) == 0.0)
-            )
-            .then(None)
-            .otherwise(
-                ((1.0 + pl.col("yf_return_price")) / (1.0 + pl.col("ms_return_price"))) - 1.0
-            )
-            .alias("source_price_event_return"),
+            _source_price_event_return_expr().alias("source_price_event_return"),
         )
         .with_columns(
             (
@@ -484,24 +556,8 @@ def build_returns_audit_lf(
             # Close reversals are equal-and-opposite adjacent differences. They
             # usually indicate a close timing/source artifact rather than a
             # persistent corporate-action adjustment problem.
-            (
-                (pl.col("total_return_diff") * pl.col("next_total_return_diff") < 0.0)
-                & (pl.col("total_return_diff").abs() > schema.TOLERANCE_4)
-                & (pl.col("next_total_return_diff").abs() > schema.TOLERANCE_4)
-                & (
-                    (pl.col("total_return_diff") + pl.col("next_total_return_diff")).abs()
-                    <= schema.REVERSAL_TOLERANCE
-                )
-            ).alias("is_next_close_reversal"),
-            (
-                (pl.col("total_return_diff") * pl.col("prior_total_return_diff") < 0.0)
-                & (pl.col("total_return_diff").abs() > schema.TOLERANCE_4)
-                & (pl.col("prior_total_return_diff").abs() > schema.TOLERANCE_4)
-                & (
-                    (pl.col("total_return_diff") + pl.col("prior_total_return_diff")).abs()
-                    <= schema.REVERSAL_TOLERANCE
-                )
-            ).alias("is_prior_close_reversal"),
+            _close_reversal_expr("next_total_return_diff").alias("is_next_close_reversal"),
+            _close_reversal_expr("prior_total_return_diff").alias("is_prior_close_reversal"),
         )
         .with_columns(
             (pl.col("is_next_close_reversal") | pl.col("is_prior_close_reversal")).alias(
@@ -510,109 +566,6 @@ def build_returns_audit_lf(
         )
     )
 
-    df_lf = audit_classification.add_analysis_reason_code(df_lf)
+    df_lf = _add_pre_research_classification_columns(df_lf)
 
-    df_lf = audit_classification.add_analysis_labels(df_lf, include_real_world_reason_codes=False)
-
-    df_lf = audit_classification.add_massive_fix_guidance(
-        df_lf,
-        pl.col("analysis_reason_code").is_in(
-            [
-                "MS_MISSING_EVENT",
-                "MS_EVENT_DATE_MISMATCH",
-                "MS_ADJ_FACTOR_CONTINUITY",
-                "MS_RETURN_METHOD_UNRESOLVED",
-                "HIGH_SCORE_ANOMALY",
-            ]
-        ),
-    )
-
-    # Add placeholder real-world-event columns before review columns are
-    # calculated so downstream expressions can safely reference them.
-    df_lf = cast(pl.LazyFrame, real_world_events.add_placeholder_columns(df_lf))  # type: ignore
-
-    df_lf = audit_classification.add_review_columns(df_lf)
-
-    df_lf = df_lf.select(
-        [
-            "ticker",
-            "date",
-            pl.col("close").alias("ms_close"),
-            "yf_close",
-            pl.col("adj_factor").alias("ms_adj_factor"),
-            "yf_adj_factor",
-            pl.col("adj_close").alias("ms_adj_close"),
-            "yf_adj_close",
-            # Dividends and splits
-            "ms_div_split",
-            "yf_div_split",
-            "has_div_split_mismatch",
-            # Returns due to price change
-            "ms_return_price",
-            "yf_return_price",
-            # Massive dividend/split factors
-            "ms_div_split_factor_implied",
-            "ms_div_split_factor_explicit",
-            "diff_ms_div_split_factor",
-            # yFinance dividend/split factors
-            "yf_div_split_factor_implied",
-            "yf_div_split_factor_explicit",
-            "diff_yf_div_split_factor",
-            # Total returns
-            "ms_return",
-            "yf_return",
-            "diff_return",
-            "needs_review",
-            "review_priority",
-            "total_return_diff",
-            "prior_total_return_diff",
-            "next_total_return_diff",
-            # Heuristic anomaly score
-            "heuristic_anomaly_score",
-            # "diff_score",
-            "abs_return",
-            "prior_return",
-            "next_return",
-            "raw_close_ratio",
-            "rolling_median_return",
-            "rolling_mad_return",
-            "robust_z",
-            # Deterministic analysis diagnostics
-            "analysis_reason_code",
-            "analysis_confidence",
-            # Massive-focused diagnostics
-            "massive_needs_fix",
-            "massive_problem_summary",
-            "massive_why_incorrect",
-            "massive_fix_action",
-            "massive_fix_priority",
-            # Adjustment-factor diagnostics
-            "prior_ms_adj_factor",
-            "prior_yf_adj_factor",
-            "ms_adj_factor_change",
-            "yf_adj_factor_change",
-            "adj_factor_change_diff",
-            # Event-neighbor diagnostics
-            "prior_ms_div_split",
-            "next_ms_div_split",
-            "prior_yf_div_split",
-            "next_yf_div_split",
-            # Supporting deterministic flags and values
-            "has_ms_event",
-            "has_yf_event",
-            "is_ms_div_split_factor_mismatch",
-            "is_yf_div_split_factor_mismatch",
-            "is_adj_factor_mismatch",
-            "is_event_denominator_mismatch",
-            "is_ms_partial_event",
-            "is_ms_extra_event",
-            "source_price_event_return",
-            "is_event_date_mismatch",
-            "is_ms_missing_event_adjustment",
-            "is_next_close_reversal",
-            "is_prior_close_reversal",
-            "is_close_reversal",
-        ]
-    )
-
-    return df_lf
+    return _select_return_audit_columns(df_lf)

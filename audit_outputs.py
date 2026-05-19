@@ -73,51 +73,7 @@ def collect_returns_output(df_lf: pl.LazyFrame) -> pl.DataFrame:
         real-world event columns ready for optional enrichment.
     """
     df: pl.DataFrame = (
-        df_lf.select(
-            [
-                "ticker",
-                "date",
-                "ms_close",
-                "yf_close",
-                "ms_adj_factor",
-                "yf_adj_factor",
-                "ms_adj_close",
-                "yf_adj_close",
-                # Dividends and splits
-                "ms_div_split",
-                "yf_div_split",
-                "has_div_split_mismatch",
-                # Returns due to price change
-                "ms_return_price",
-                "yf_return_price",
-                # Massive dividend/split factors
-                "ms_div_split_factor_implied",
-                "ms_div_split_factor_explicit",
-                "diff_ms_div_split_factor",
-                # yFinance dividend/split factors
-                "yf_div_split_factor_implied",
-                "yf_div_split_factor_explicit",
-                "diff_yf_div_split_factor",
-                # Total returns
-                "ms_return",
-                "yf_return",
-                "diff_return",
-                "needs_review",
-                "review_priority",
-                # Heuristic anomaly score
-                "heuristic_anomaly_score",
-                # "diff_score",
-                # Deterministic analysis diagnostics
-                "analysis_reason_code",
-                "analysis_confidence",
-                # Massive-focused diagnostics
-                "massive_needs_fix",
-                "massive_problem_summary",
-                "massive_why_incorrect",
-                "massive_fix_action",
-                "massive_fix_priority",
-            ]
-        )
+        df_lf.select(schema.RETURN_AUDIT_PUBLIC_COLUMNS)
         .pipe(real_world_events.add_placeholder_columns)
         .collect()
     )

@@ -83,6 +83,121 @@ REAL_WORLD_EVENT_RETURN_BUCKETS: list[str] = [
     "RIGHTS",
 ]
 
+REAL_WORLD_EVENT_COLUMNS: list[str] = [
+    "event_detected",
+    "event_bucket",
+    "expected_return_impact",
+    "likely_correct_source",
+    "research_confidence",
+    "evidence_summary",
+    "real_world_event",
+    "primary_source_url",
+    "secondary_source_url",
+]
+
+FORENSIC_ANALYST_OUTPUT_COLUMNS: list[str] = [
+    "ticker",
+    "date",
+    "event_detected",
+    "event_bucket",
+    "expected_return_impact",
+    "likely_correct_source",
+    "research_confidence",
+    "primary_source_url",
+    "secondary_source_url",
+    "evidence_summary",
+    "real_world_event",
+]
+
+REAL_WORLD_EVENT_KEY_COLUMNS: list[str] = [
+    "ticker",
+    "date",
+]
+
+REQUIRED_REAL_WORLD_EVENT_COLUMNS: set[str] = set(
+    REAL_WORLD_EVENT_KEY_COLUMNS + REAL_WORLD_EVENT_COLUMNS
+)
+
+RETURN_AUDIT_PUBLIC_COLUMNS: list[str] = [
+    "ticker",
+    "date",
+    "ms_close",
+    "yf_close",
+    "ms_adj_factor",
+    "yf_adj_factor",
+    "ms_adj_close",
+    "yf_adj_close",
+    "ms_div_split",
+    "yf_div_split",
+    "has_div_split_mismatch",
+    "ms_return_price",
+    "yf_return_price",
+    "ms_div_split_factor_implied",
+    "ms_div_split_factor_explicit",
+    "diff_ms_div_split_factor",
+    "yf_div_split_factor_implied",
+    "yf_div_split_factor_explicit",
+    "diff_yf_div_split_factor",
+    "ms_return",
+    "yf_return",
+    "diff_return",
+    "needs_review",
+    "review_priority",
+    "heuristic_anomaly_score",
+    "analysis_reason_code",
+    "analysis_confidence",
+    "massive_needs_fix",
+    "massive_problem_summary",
+    "massive_why_incorrect",
+    "massive_fix_action",
+    "massive_fix_priority",
+]
+
+RETURN_AUDIT_DIAGNOSTIC_COLUMNS: list[str] = [
+    "total_return_diff",
+    "prior_total_return_diff",
+    "next_total_return_diff",
+    "abs_return",
+    "prior_return",
+    "next_return",
+    "raw_close_ratio",
+    "rolling_median_return",
+    "rolling_mad_return",
+    "robust_z",
+    "prior_ms_adj_factor",
+    "prior_yf_adj_factor",
+    "ms_adj_factor_change",
+    "yf_adj_factor_change",
+    "adj_factor_change_diff",
+    "prior_ms_div_split",
+    "next_ms_div_split",
+    "prior_yf_div_split",
+    "next_yf_div_split",
+    "has_ms_event",
+    "has_yf_event",
+    "is_ms_div_split_factor_mismatch",
+    "is_yf_div_split_factor_mismatch",
+    "is_adj_factor_mismatch",
+    "is_event_denominator_mismatch",
+    "is_ms_partial_event",
+    "is_ms_extra_event",
+    "source_price_event_return",
+    "is_event_date_mismatch",
+    "is_ms_missing_event_adjustment",
+    "is_next_close_reversal",
+    "is_prior_close_reversal",
+    "is_close_reversal",
+]
+
+RETURN_AUDIT_ALL_COLUMNS: list[str] = (
+    RETURN_AUDIT_PUBLIC_COLUMNS[:24]
+    + RETURN_AUDIT_DIAGNOSTIC_COLUMNS[:3]
+    + RETURN_AUDIT_PUBLIC_COLUMNS[24:25]
+    + RETURN_AUDIT_DIAGNOSTIC_COLUMNS[3:10]
+    + RETURN_AUDIT_PUBLIC_COLUMNS[25:]
+    + RETURN_AUDIT_DIAGNOSTIC_COLUMNS[10:]
+)
+
 _DIV_SPLIT_EXAMPLE_INPUTS = (
     "\n\nWorked example: assume prior unadjusted close is 100.00, current "
     "unadjusted close is 51.00, the source records a 2-for-1 split, and the "
