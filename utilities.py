@@ -33,7 +33,7 @@ def write_text_create_parent(output_path: str | Path, content: str) -> None:
     path.write_text(content, encoding=ENCODING)
 
 
-def load_single_column_csv(file_path: str | Path) -> tuple[str, ...]:
+def load_single_column(file_path: str | Path) -> tuple[str, ...]:
     """Load a single-column CSV file into a unique sorted tuple of strings.
 
     Notes:

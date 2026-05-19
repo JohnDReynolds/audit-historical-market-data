@@ -1,7 +1,7 @@
-"""Download Massive market data exports.
+"""Load Massive market data exports.
 
-This module downloads daily prices, dividend events, and split events from
-Massive for the ticker/date configuration supplied to ``MassiveData``.
+This module downloads or reuses cached daily prices, dividend events, and split
+events from Massive for the ticker/date configuration supplied to ``MassiveData``.
 
 The module writes flat CSV files intended for downstream audit,
 comparison, and analytics workflows.
@@ -38,26 +38,46 @@ _API_KEY_ENV_VAR: str = "MASSIVE_API_KEY"
 # Load MASSIVE_API_KEY from local .env file.
 load_dotenv()
 
-_API_KEY: str | None = os.getenv(_API_KEY_ENV_VAR)
+_client: RESTClient | None = None
 
-if not _API_KEY:
-    raise RuntimeError(f"Environment variable {_API_KEY_ENV_VAR} is required for Massive access.")
 
-# Create one reusable REST client instance.
-_CLIENT: RESTClient = RESTClient(_API_KEY)
+def _get_client() -> RESTClient:
+    """Return a cached Massive REST client, creating it only when needed.
+
+    Returns:
+        Massive REST client initialized from ``MASSIVE_API_KEY``.
+
+    Raises:
+        RuntimeError:
+            Raised if ``MASSIVE_API_KEY`` is missing when a client is needed.
+    """
+    global _client
+
+    if _client is None:
+        api_key: str | None = os.getenv(_API_KEY_ENV_VAR)
+
+        if not api_key:
+            raise RuntimeError(
+                f"Environment variable {_API_KEY_ENV_VAR} is required to download Massive data. "
+                "Set it in .env or reuse existing cached input CSVs."
+            )
+
+        _client = RESTClient(api_key)
+
+    return _client
 
 
 class MassiveData:
-    """Download and load Massive market data exports.
+    """Load Massive market data exports.
 
-    This class downloads and loads:
+    This class downloads or reuses cached CSVs for:
 
     - Dividend events
     - Daily OHLCV prices
     - Stock split events
 
-    Data is downloaded from Massive and written to CSV files for
-    downstream ETL, auditing, and comparison workflows.
+    Downloaded data is written to CSV files for downstream ETL, auditing, and
+    comparison workflows.
 
     Attributes:
         tickers:
@@ -179,13 +199,14 @@ class MassiveData:
             ) from exc
 
     def _load_dividends(self) -> pl.LazyFrame:
-        """Download Massive dividend events and return LazyFrame.
+        """Load Massive dividend events and return LazyFrame.
 
         This function downloads dividend events using the Massive
-        ``list_dividends()`` endpoint for all configured tickers.
+        ``list_dividends()`` endpoint for all configured tickers when the
+        date-ranged cache is missing or ``always_download`` is true.
 
-        Results are written to a flat CSV file and returned as a
-        Polars LazyFrame.
+        Results are written to a flat CSV file and returned as a Polars
+        LazyFrame.
 
         Returns:
             LazyFrame containing dividend event data.
@@ -219,6 +240,7 @@ class MassiveData:
 
         # Download data only if needed.
         if self.always_download or not Path(file_path).exists():
+            client: RESTClient = _get_client()
             print("\n#################### Downloading Massive Dividends...")
 
             with util.safe_csv_dict_writer(file_path, fieldnames) as writer:
@@ -244,7 +266,7 @@ class MassiveData:
                     normalized_ticker: str = util.normalize_ticker(ticker)
 
                     try:
-                        dividends_iterable: Iterable[Any] = _CLIENT.list_dividends(
+                        dividends_iterable: Iterable[Any] = client.list_dividends(
                             ticker=normalized_ticker,
                             ex_dividend_date_gte=self.from_date,
                             ex_dividend_date_lte=self.to_date,
@@ -300,13 +322,14 @@ class MassiveData:
         return pl.scan_csv(file_path)
 
     def _load_ohlcv(self, adjusted: bool) -> pl.LazyFrame:
-        """Download Massive OHLCV aggregate bars and return LazyFrame.
+        """Load Massive OHLCV aggregate bars and return LazyFrame.
 
-        This function downloads daily OHLCV aggregate bars using the
-        Massive ``list_aggs()`` endpoint.
+        This function downloads daily OHLCV aggregate bars using the Massive
+        ``list_aggs()`` endpoint when the date-ranged cache is missing or
+        ``always_download`` is true.
 
-        Results are written to a flat CSV file and returned as a
-        Polars LazyFrame.
+        Results are written to a flat CSV file and returned as a Polars
+        LazyFrame.
 
         Notes:
             - ``adjusted=True`` means split-adjusted prices.
@@ -357,6 +380,7 @@ class MassiveData:
 
         # Download data only if needed.
         if self.always_download or not Path(file_path).exists():
+            client = _get_client()
             print(f"\n#################### Downloading Massive " f"OHLCV: Adjusted={adjusted}...")
 
             with util.safe_csv_dict_writer(file_path, fieldnames) as writer:
@@ -371,7 +395,7 @@ class MassiveData:
 
                     try:
                         # Massive internally handles pagination.
-                        aggs_iterable: Iterable[Any] = _CLIENT.list_aggs(
+                        aggs_iterable: Iterable[Any] = client.list_aggs(
                             ticker=normalized_ticker,
                             multiplier=1,
                             timespan="day",
@@ -427,13 +451,14 @@ class MassiveData:
         return pl.scan_csv(file_path).with_columns(pl.col("date").str.to_date())
 
     def _load_splits(self) -> pl.LazyFrame:
-        """Download Massive stock split events and return LazyFrame.
+        """Load Massive stock split events and return LazyFrame.
 
         This function downloads stock split events using the Massive
-        ``list_splits()`` endpoint for all configured tickers.
+        ``list_splits()`` endpoint for all configured tickers when the
+        date-ranged cache is missing or ``always_download`` is true.
 
-        Results are written to a flat CSV file and returned as a
-        Polars LazyFrame.
+        Results are written to a flat CSV file and returned as a Polars
+        LazyFrame.
 
         Returns:
             LazyFrame containing split event data.
@@ -463,6 +488,7 @@ class MassiveData:
 
         # Download data only if needed.
         if self.always_download or not Path(file_path).exists():
+            client = _get_client()
             print("\n#################### Downloading Massive Splits...")
 
             with util.safe_csv_dict_writer(file_path, fieldnames) as writer:
@@ -483,7 +509,7 @@ class MassiveData:
                     normalized_ticker: str = util.normalize_ticker(ticker)
 
                     try:
-                        splits_iterable: Iterable[Any] = _CLIENT.list_splits(
+                        splits_iterable: Iterable[Any] = client.list_splits(
                             ticker=normalized_ticker,
                             execution_date_gte=self.from_date,
                             execution_date_lte=self.to_date,

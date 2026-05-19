@@ -1,5 +1,5 @@
 """
-Download Massive data and yFinance data.
+Download or reuse cached Massive data and yFinance data.
 Then audit Massive adjusted OHLCV, dividends, splits and returns.
 """
 
@@ -34,7 +34,7 @@ def main() -> None:
 
     # Perform audit
     audit = Audit(
-        tickers=util.load_single_column_csv("inputs/tickers"),
+        tickers=util.load_single_column("inputs/tickers"),
         from_date=_FROM_DATE,
         to_date=_TO_DATE,
         # always_download=False, default

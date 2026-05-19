@@ -296,7 +296,19 @@ ca:<cash_amount>
 Example:
 ca:0.82
 
-Multiple same-day events may be space-separated.
+Massive cash marker formats:
+cd:<cash_amount> = Massive regular cash dividend.
+sc:<cash_amount> = Massive special cash dividend.
+ca:<cash_amount> = generic cash action/distribution marker when no regular/special distinction is available.
+
+yFinance cash marker format:
+ca:<cash_amount> = yFinance generic cash dividend/distribution marker.
+
+For economic event matching, cd:<amount>, sc:<amount>, and ca:<amount> are all cash distribution markers. Do not treat cd/sc versus ca as an event-source mismatch by itself when the cash amount and date reconcile.
+
+However, sc:<amount> is research-relevant. Special cash dividends more often create vendor adjustment, denominator, event classification, or timing differences than ordinary regular dividends. When ms_div_split contains sc:<amount>, explicitly investigate whether the special dividend caused the return difference or adjustment treatment.
+
+Multiple same-day events are space-separated.
 
 has_div_split_mismatch:
 true when Massive and yFinance event markers differ.
@@ -311,25 +323,25 @@ Massive raw price return from unadjusted closes.
 yf_return_price:
 yFinance raw price return from unadjusted closes.
 
-ms_return_div_split_implied:
-Massive implied event return:
-ms_return - ms_return_price
+ms_div_split_factor_implied:
+Massive implied dividend/split factor inferred from adjusted and raw price returns:
+(1 + ms_return) / (1 + ms_return_price)
 
-ms_return_div_split_actual:
-Massive explicit event return derived from Massive events.
+ms_div_split_factor_explicit:
+Massive explicit dividend/split factor derived from Massive event records.
 
-yf_return_div_split_implied:
-yFinance implied event return:
-yf_return - yf_return_price
+yf_div_split_factor_implied:
+yFinance implied dividend/split factor inferred from adjusted and raw price returns:
+(1 + yf_return) / (1 + yf_return_price)
 
-yf_return_div_split_actual:
-yFinance explicit event return derived from yFinance events.
+yf_div_split_factor_explicit:
+yFinance explicit dividend/split factor derived from yFinance event records.
 
-diff_ms_return_div_split:
-Difference between Massive implied vs explicit event return.
+diff_ms_div_split_factor:
+Difference between Massive implied vs explicit dividend/split factor.
 
-diff_yf_return_div_split:
-Difference between yFinance implied vs explicit event return.
+diff_yf_div_split_factor:
+Difference between yFinance implied vs explicit dividend/split factor.
 
 ms_return:
 Final Massive adjusted return.
@@ -384,13 +396,12 @@ Important values include:
 - MS_EXTRA_EVENT
 - MS_PARTIAL_EVENT
 - MS_ADJ_FACTOR_CONTINUITY
-- MS_DIV_SPLIT_RETURN_MISMATCH
 - EVENT_SOURCE_MISMATCH
 - YF_DIV_SPLIT_RETURN_MISMATCH
 - MS_RETURN_METHOD_UNRESOLVED
 
 analysis_confidence:
-Deterministic pre-research confidence label.
+Deterministic confidence label for the audit pipeline's current analysis classification.
 
 massive_needs_fix:
 true when the deterministic audit logic believes Massive may require correction.
@@ -416,12 +427,12 @@ Before assigning likely_correct_source, the model MUST explicitly review:
 - ms_div_split
 - yf_div_split
 - has_div_split_mismatch
-- ms_return_div_split_implied
-- ms_return_div_split_actual
-- diff_ms_return_div_split
-- yf_return_div_split_implied
-- yf_return_div_split_actual
-- diff_yf_return_div_split
+- ms_div_split_factor_implied
+- ms_div_split_factor_explicit
+- diff_ms_div_split_factor
+- yf_div_split_factor_implied
+- yf_div_split_factor_explicit
+- diff_yf_div_split_factor
 - ms_adj_factor
 - yf_adj_factor
 - analysis_reason_code
@@ -446,7 +457,7 @@ Use this hierarchy:
 2. Explicit event evidence
    - ms_div_split
    - yf_div_split
-   - *_div_split_actual
+   - *_div_split_explicit
 
 3. Adjusted-close mechanics
    - *_div_split_implied
@@ -488,14 +499,14 @@ audit_returns() uses the EVENT RETURN convention.
 When a split exists, compare:
 - expected_return_impact
 - diff_return
-- ms_return_div_split_actual
-- yf_return_div_split_actual
-- implied event-return fields
+- ms_div_split_factor_explicit - 1.0
+- yf_div_split_factor_explicit - 1.0
+- implied dividend/split factor fields minus 1.0
 
 If:
 - yFinance has the split
 - Massive does not
-- yFinance event return explains diff_return
+- yFinance dividend/split factor impact explains diff_return
 
 Then:
 likely_correct_source should usually be YFINANCE.
@@ -503,7 +514,7 @@ likely_correct_source should usually be YFINANCE.
 If:
 - Massive has the split
 - yFinance does not
-- Massive event return explains diff_return
+- Massive dividend/split factor impact explains diff_return
 
 Then:
 likely_correct_source should usually be MASSIVE.
@@ -532,16 +543,18 @@ CASH DISTRIBUTION RULE
 
 For:
 ca:<cash_amount>
+cd:<cash_amount>
+sc:<cash_amount>
 
 Approximate:
 expected_return_impact = cash_amount / prior_close
 
 Compare:
-- explicit event-return fields
-- implied event-return fields
+- explicit dividend/split factor impact, calculated as factor - 1.0
+- implied dividend/split factor impact, calculated as factor - 1.0
 - diff_return
 
-Use the vendor whose event-return math reconciles correctly.
+Use the vendor whose dividend/split factor impact reconciles correctly.
 
 ==================================================
 EVENT-DATE MISMATCH RULE
@@ -619,7 +632,7 @@ A row is ECONOMICALLY EQUIVALENT if ALL apply:
 If ECONOMICALLY EQUIVALENT:
 
 - likely_correct_source MUST be BOTH
-- confidence_level should usually be LOW
+- research_confidence should usually be LOW
 - event_detected should usually be NO
 - event_bucket should usually be UNKNOWN
 
@@ -698,7 +711,7 @@ No JSON.
 
 Columns MUST be EXACTLY:
 
-ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,confidence_level,primary_source_url,secondary_source_url,evidence_summary,real_world_event
+ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,research_confidence,primary_source_url,secondary_source_url,evidence_summary,real_world_event
 
 ==================================================
 COLUMN RULES
@@ -726,7 +739,7 @@ BOTH
 NEITHER
 UNCERTAIN
 
-confidence_level:
+research_confidence:
 HIGH
 MEDIUM
 LOW

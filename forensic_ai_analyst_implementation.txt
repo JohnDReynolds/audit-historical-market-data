@@ -1,6 +1,7 @@
+For date1 == 2021-05-16 and date2 == 2026-05-16
 Please process each input file matching:
 
-outputs/*_audited_returns.*.*.csv
+outputs/*_audited_returns.<date1>.<date2>.csv
 
 For each input CSV file:
 - follow the research instructions in:
@@ -11,9 +12,9 @@ For each input CSV file:
   <original_input_path>.researched
 
 Example:
-outputs/2_audited_returns.2021-05-10.2026-05-10.csv
+outputs/2_audited_returns.<date1>.<date2>.csv
 ->
-outputs/2_audited_returns.2021-05-10.2026-05-10.csv.researched
+outputs/2_audited_returns.<date1>.<date2>.csv.researched
 
 STRICT EXECUTION DISCIPLINE
 ===========================
@@ -54,7 +55,7 @@ files are being used."
 
 Requirements:
 - first delete all existing output files matching:
-  outputs/*_audited_returns.*.*.csv.researched
+  outputs/*_audited_returns.<date1>.<date2>.csv.researched
 - process batch files in ascending numeric prefix order
 - process each input CSV file independently
 - process files sequentially, one file at a time
@@ -66,13 +67,9 @@ Requirements:
 - after each file, verify that the output file exists and has the required columns
 - produce a short processing summary at the end
 - when all CSV files are complete, concatenate all files matching:
-  outputs/*_audited_returns.*.*.csv.researched
+  outputs/*_audited_returns.<date1>.<date2>.csv.researched
   into:
   inputs/real_world_events.<date1>.<date2>.csv
-- use the two date segments from the audited_returns input filenames for
-  <date1> and <date2>
-- example final concatenated output path:
-  inputs/real_world_events.2021-05-10.2026-05-10.csv
 - when concatenating, include the header only once
 - preserve batch/file order during concatenation
 

@@ -45,8 +45,14 @@ def build_cumulative_factors_lf(
     Returns:
         LazyFrame with one cumulative adjustment factor per ticker/date.
     """
+    # There are two related but different corporate-action conventions in this
+    # file: backward price factors restate old prices onto the current adjusted
+    # basis, while dividend/split factors describe the multiplicative one-day
+    # adjustment needed to bridge raw and adjusted returns. Keeping those separate
+    # prevents split_from / split_to price factors from being compared to
+    # split_to / split_from dividend/split factors later.
     # Backward-adjusted price history uses the inverse of the split ratio.
-    # A 2-for-1 split has an event return of +100%, but prior prices are
+    # A 2-for-1 split has a dividend/split factor of 2.0, but prior prices are
     # multiplied by 1/2 so the historical series remains continuous.
     split_events_lf: pl.LazyFrame = massive_data.splits.select(
         pl.col("ticker").str.strip_chars().str.to_uppercase(),
@@ -56,14 +62,18 @@ def build_cumulative_factors_lf(
         ),
     )
 
-    # Cash dividends reduce the backward price factor by cash/prior_close.
-    # The event date itself is not backward-adjusted; all earlier dates are.
+    # Cash dividends reduce the backward price factor by cash/prior_close. Sum
+    # same-day cash distributions first: multiple cash records on one ex-date
+    # are one economic distribution for return-adjustment purposes. Applying
+    # separate component factors would introduce an artificial cross-term.
     dividend_events_lf: pl.LazyFrame = (
         massive_data.dividends.select(
             pl.col("ticker").str.strip_chars().str.to_uppercase(),
             pl.col("ex_dividend_date").str.to_date().alias("event_date"),
             pl.col("cash_amount").cast(pl.Float64).alias("cash_amount"),
         )
+        .group_by(["ticker", "event_date"])
+        .agg(pl.col("cash_amount").sum().alias("cash_amount"))
         .join(
             close_with_prior_lf.select(
                 pl.col("ticker"),
@@ -111,11 +121,11 @@ def build_cumulative_factors_lf(
     return cumulative_factors_lf
 
 
-def build_massive_actual_return_lf(
+def build_massive_explicit_factor_lf(
     massive_data: MassiveData,
     close_with_prior_lf: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Build Massive explicit dividend/split return adjustments.
+    """Build Massive explicit dividend/split adjustment factors.
 
     Args:
         massive_data:
@@ -125,12 +135,12 @@ def build_massive_actual_return_lf(
             Massive close data with prior close attached by ticker.
 
     Returns:
-        LazyFrame with one ``ms_return_div_split_actual`` value per
+        LazyFrame with one ``ms_div_split_factor_explicit`` value per
         ticker/date.
     """
-    # Explicit event returns use the audit's event-return convention:
-    # split_to / split_from - 1 for splits, and cash / prior_close for
-    # dividends. This is distinct from the backward price factor above.
+    # Explicit dividend/split factors are multiplicative adjustment factors, not
+    # standalone investment returns. A 2-for-1 split is represented as 2.0 and a
+    # $1 dividend on a $100 prior close is represented as 1.01.
     ms_split_return_events_lf: pl.LazyFrame = massive_data.splits.select(
         pl.col("ticker").str.strip_chars().str.to_uppercase(),
         pl.col("execution_date").str.to_date().alias("date"),
@@ -139,14 +149,17 @@ def build_massive_actual_return_lf(
         ),
     )
 
-    # Dividend return impact is measured against the previous trading close.
-    # That makes it directly comparable to adjusted return minus raw price return.
+    # Dividend return impact is measured against the previous trading close. Sum
+    # same-day cash distributions before computing the return factor; separate
+    # component-level dividend factors are not economically equivalent.
     ms_dividend_return_events_lf: pl.LazyFrame = (
         massive_data.dividends.select(
             pl.col("ticker").str.strip_chars().str.to_uppercase(),
             pl.col("ex_dividend_date").str.to_date().alias("date"),
             pl.col("cash_amount").cast(pl.Float64).alias("cash_amount"),
         )
+        .group_by(["ticker", "date"])
+        .agg(pl.col("cash_amount").sum().alias("cash_amount"))
         .join(
             close_with_prior_lf.select(
                 pl.col("ticker"),
@@ -176,9 +189,9 @@ def build_massive_actual_return_lf(
     return (
         pl.concat([ms_split_return_events_lf, ms_dividend_return_events_lf])
         .group_by(["ticker", "date"])
-        # Multiple same-day actions compound multiplicatively; subtracting one
-        # returns the combined event contribution for the daily return.
-        .agg((pl.col("event_return_factor").product() - 1.0).alias("ms_return_div_split_actual"))
+        # Split and cash factors compound when both occur on a date, but same-day
+        # cash distributions have already been combined into one cash factor.
+        .agg(pl.col("event_return_factor").product().alias("ms_div_split_factor_explicit"))
     )
 
 
@@ -210,6 +223,10 @@ def build_massive_adjusted_returns_lf(
         .sort(["ticker", "date"])
     )
 
+    # This adjusted close is reconstructed from Massive raw closes plus Massive
+    # corporate actions. Differences from yFinance therefore test the Massive
+    # action chain's total-return behavior, not the split-adjusted aggregate
+    # endpoint alone.
     # ms_return is the dividend/split-adjusted return derived from the audit's
     # reconstructed adjusted close. ms_return_price is the raw close-to-close
     # price return before corporate-action effects.
@@ -224,15 +241,23 @@ def build_massive_adjusted_returns_lf(
         ).alias("ms_return_price"),
     )
 
-    # The implied event return is whatever part of adjusted return cannot be
-    # explained by raw price movement. Later reconciliation compares this to
-    # explicit split/dividend records.
+    # The implied factor is multiplicative so it can be compared directly to
+    # explicit dividend/split factors.
     adjusted_lf = adjusted_lf.with_columns(
-        (pl.col("ms_return") - pl.col("ms_return_price")).alias("ms_return_div_split_implied")
+        pl.when(
+            pl.col("ms_return").is_null()
+            | pl.col("ms_return_price").is_null()
+            | ((1.0 + pl.col("ms_return_price")) == 0.0)
+        )
+        .then(None)
+        .otherwise((1.0 + pl.col("ms_return")) / (1.0 + pl.col("ms_return_price")))
+        .alias("ms_div_split_factor_implied"),
     )
 
-    # Nearby returns and raw close ratios help separate corporate-action
-    # mechanics, close-source reversals, and unusual market moves.
+    # Nearby returns and raw close ratios provide context for classification. An
+    # opposite adjacent-day move suggests a close-source artifact, while a raw
+    # close ratio near 0.5, 2.0, etc. is split-shaped evidence even before event
+    # records are reconciled.
     adjusted_lf = adjusted_lf.with_columns(
         pl.col("ms_return").abs().alias("abs_return"),
         pl.col("ms_return").shift(1).over("ticker").alias("prior_return"),
@@ -269,9 +294,10 @@ def build_massive_adjusted_returns_lf(
         ).alias("robust_z")
     )
 
-    # The anomaly score is a triage signal, not a vendor verdict. It favors
-    # extremely large returns, unusual moves versus recent history, split-like
-    # raw close ratios, and large adjacent-day reversals.
+    # The anomaly score is a triage signal, not a vendor verdict. It combines
+    # independent clues rather than producing a probability: absolute return
+    # size, robust deviation from recent behavior, split-shaped raw close ratios,
+    # and adjacent-day reversals. Research and reconciliation decide correctness.
     trailing_abs_median_expr: pl.Expr = (
         pl.col("abs_return").rolling_median(window_size=20, min_samples=10).over("ticker")
     )
@@ -350,7 +376,21 @@ def build_massive_div_split_lf(massive_data: MassiveData) -> pl.LazyFrame:
                     pl.col("ex_dividend_date").str.to_date().alias("date"),
                     pl.concat_str(
                         [
-                            pl.lit("ca:"),
+                            pl.when(
+                                pl.col("dividend_type")
+                                .cast(pl.Utf8)
+                                .str.strip_chars()
+                                .str.to_lowercase()
+                                .is_in(["cd", "sc"])
+                            )
+                            .then(
+                                pl.col("dividend_type")
+                                .cast(pl.Utf8)
+                                .str.strip_chars()
+                                .str.to_lowercase()
+                            )
+                            .otherwise(pl.lit("ca")),
+                            pl.lit(":"),
                             pl.col("cash_amount").cast(pl.Float64).cast(pl.String),
                         ]
                     ).alias("event_text"),
@@ -365,11 +405,11 @@ def build_massive_div_split_lf(massive_data: MassiveData) -> pl.LazyFrame:
     )
 
 
-def build_yfinance_actual_return_lf(
+def build_yfinance_explicit_factor_lf(
     yfinance_data: YFinanceData,
     yfinance_close_with_prior_lf: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Build yFinance explicit dividend/split return adjustments.
+    """Build yFinance explicit dividend/split adjustment factors.
 
     Args:
         yfinance_data:
@@ -379,20 +419,19 @@ def build_yfinance_actual_return_lf(
             yFinance close data with prior close attached by ticker.
 
     Returns:
-        LazyFrame with one ``yf_return_div_split_actual`` value per
+        LazyFrame with one ``yf_div_split_factor_explicit`` value per
         ticker/date.
     """
-    # yFinance split_ratio is already in event-return factor form. For example,
-    # 2.0 means a 2-for-1 split and contributes +100% under the audit's
-    # event-return convention.
+    # yFinance split_ratio is already in factor form. For example, 2.0 means a
+    # 2-for-1 split adjustment factor, not a standalone investment return.
     yf_split_return_events_lf: pl.LazyFrame = yfinance_data.splits.select(
         pl.col("ticker").str.strip_chars().str.to_uppercase(),
         pl.col("execution_date").str.to_date().alias("date"),
         pl.col("split_ratio").cast(pl.Float64).alias("event_return_factor"),
     ).filter(pl.col("event_return_factor") != 0.0)
 
-    # Build yFinance's explicit dividend return the same way as Massive's so
-    # vendor event records are compared using a common return convention.
+    # Build yFinance's explicit dividend factor the same way as Massive's so
+    # vendor event records are compared using a common factor convention.
     yf_dividend_return_events_lf: pl.LazyFrame = (
         yfinance_data.dividends.select(
             pl.col("ticker").str.strip_chars().str.to_uppercase(),
@@ -429,9 +468,9 @@ def build_yfinance_actual_return_lf(
     return (
         pl.concat([yf_split_return_events_lf, yf_dividend_return_events_lf])
         .group_by(["ticker", "date"])
-        # Compound any same-day yFinance split/dividend effects into one event
-        # return for comparison against yFinance's adjusted-close behavior.
-        .agg((pl.col("event_return_factor").product() - 1.0).alias("yf_return_div_split_actual"))
+        # Compound any same-day yFinance split/dividend effects into one factor
+        # for comparison against yFinance's adjusted-close behavior.
+        .agg(pl.col("event_return_factor").product().alias("yf_div_split_factor_explicit"))
     )
 
 
@@ -490,8 +529,8 @@ def build_yfinance_div_split_lf(yfinance_data: YFinanceData) -> pl.LazyFrame:
             ]
         )
         .group_by(["ticker", "date"])
-        # Keep yFinance marker text canonical for direct comparison with the
-        # Massive marker string.
+        # Keep yFinance marker text canonical; comparison code normalizes
+        # equivalent Massive cd/sc cash markers on demand.
         .agg(pl.col("event_text").sort().str.join(" ").alias("yf_div_split"))
     )
 
@@ -505,11 +544,11 @@ def build_yfinance_lookup_lf(yfinance_data: YFinanceData) -> pl.LazyFrame:
 
     Returns:
         LazyFrame with yFinance close, adjusted close, price return, adjusted
-        return, and implied dividend/split return columns.
+        return, and implied dividend/split factor columns.
     """
     # Normalize yFinance price data and calculate yFinance adjusted returns.
     # yFinance adjusted_close is treated as an external comparison series; its
-    # implied event return is calculated from prices, not from event files.
+    # implied dividend/split factor is calculated from prices, not from event files.
     return (
         yfinance_data.ohlcv.select(
             [
@@ -531,8 +570,13 @@ def build_yfinance_lookup_lf(yfinance_data: YFinanceData) -> pl.LazyFrame:
             ).alias("yf_return_price"),
         )
         .with_columns(
-            (pl.col("yf_return") - pl.col("yf_return_price")).alias(
-                "yf_return_div_split_implied"
+            pl.when(
+                pl.col("yf_return").is_null()
+                | pl.col("yf_return_price").is_null()
+                | ((1.0 + pl.col("yf_return_price")) == 0.0)
             )
+            .then(None)
+            .otherwise((1.0 + pl.col("yf_return")) / (1.0 + pl.col("yf_return_price")))
+            .alias("yf_div_split_factor_implied"),
         )
     )

@@ -1,7 +1,8 @@
-"""Download yFinance market data exports.
+"""Load yFinance market data exports.
 
-This module downloads daily prices, dividend events, and split events from
-``yFinance`` for the ticker/date configuration supplied to ``YFinanceData``.
+This module downloads or reuses cached daily prices, dividend events, and split
+events from ``yFinance`` for the ticker/date configuration supplied to
+``YFinanceData``.
 
 The module writes flat CSV files that are intended to be consumed by downstream
 audit and comparison code.
@@ -31,16 +32,16 @@ import utilities as util
 
 
 class YFinanceData:
-    """Download and load yFinance market data exports.
+    """Load yFinance market data exports.
 
-    This class downloads and loads:
+    This class downloads or reuses cached CSVs for:
 
     - Dividend events
     - Daily OHLCV prices
     - Stock split events
 
-    Data is downloaded from yFinance and written to CSV files for
-    downstream ETL, auditing, and comparison workflows.
+    Downloaded data is written to CSV files for downstream ETL, auditing, and
+    comparison workflows.
 
     Attributes:
         tickers:
@@ -126,14 +127,15 @@ class YFinanceData:
         return inclusive_end_date.strftime("%Y-%m-%d")
 
     def _load_dividends(self) -> pl.LazyFrame:
-        """Fetch yFinance dividend events for configured tickers and write to CSV.
+        """Load yFinance dividend events for configured tickers.
 
-        This function downloads dividend events exposed by yfinance for each ticker
-        in ``self.tickers`` and filters them to the inclusive range
+        This function downloads dividend events exposed by yfinance for each
+        ticker in ``self.tickers`` when the date-ranged cache is missing or
+        ``always_download`` is true. Events are filtered to the inclusive range
         ``self.from_date`` through ``self.to_date``. One CSV row is written per
         dividend event.
 
-        The output file path is built from ``util.PATH_YFINANCE_DIVIDENDS``.
+        The output file path is built from ``schema.PATH_YFINANCE_DIVIDENDS``.
 
         Returns:
             LazyFrame containing dividend event data.
@@ -205,16 +207,17 @@ class YFinanceData:
         return pl.scan_csv(file_path)
 
     def _load_ohlcv(self) -> pl.LazyFrame:
-        """Fetch yFinance daily OHLCV bars for configured tickers and write to CSV.
+        """Load yFinance daily OHLCV bars for configured tickers.
 
         This function downloads daily price bars from yfinance for each ticker in
-        ``self.tickers`` using ``self.from_date`` and ``self.to_date``. Prices are
+        ``self.tickers`` using ``self.from_date`` and ``self.to_date`` when the
+        date-ranged cache is missing or ``always_download`` is true. Prices are
         requested with ``auto_adjust=False``, so both raw close and adjusted close
         are written.
 
         One CSV row is written per ticker/date daily bar.
 
-        The output file path is built from ``util.PATH_YFINANCE_PRICES``.
+        The output file path is built from ``schema.PATH_YFINANCE_PRICES``.
 
         Note:
             yfinance's ``end`` date is treated as exclusive for price downloads.
@@ -300,13 +303,15 @@ class YFinanceData:
         return pl.scan_csv(file_path)
 
     def _load_splits(self) -> pl.LazyFrame:
-        """Fetch yFinance split events for configured tickers and write to CSV.
+        """Load yFinance split events for configured tickers.
 
         This function downloads split events exposed by yfinance for each ticker in
-        ``self.tickers`` and filters them to the inclusive range ``self.from_date``
-        through ``self.to_date``. One CSV row is written per split event.
+        ``self.tickers`` when the date-ranged cache is missing or
+        ``always_download`` is true. Events are filtered to the inclusive range
+        ``self.from_date`` through ``self.to_date``. One CSV row is written per
+        split event.
 
-        The output file path is built from ``util.PATH_YFINANCE_SPLITS``.
+        The output file path is built from ``schema.PATH_YFINANCE_SPLITS``.
 
         Returns:
             LazyFrame containing split event data.

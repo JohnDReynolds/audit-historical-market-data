@@ -263,7 +263,7 @@ class Audit:
         output_path: str | None = None,
         verbose: bool = False,
     ) -> str:
-        """Create an HTML audit report from a DataFrame.
+        """Create an HTML audit report from audit results.
 
         Args:
             actionable:
@@ -289,10 +289,19 @@ class Audit:
         )
 
         if summary:
+
             def joined_text_expr(column_names: Sequence[str]) -> pl.Expr:
-                """Join nonblank text columns with a blank line for summary reports."""
+                """Join nonblank text columns with a blank line for summary reports.
+
+                Args:
+                    column_names:
+                        Raw column names to combine.
+
+                Returns:
+                    Polars expression that joins nonblank column values.
+                """
                 return pl.struct(
-                    [pl.col(column_name).fill_null("").cast(pl.Utf8) for column_name in column_names]
+                    [pl.col(col_name).fill_null("").cast(pl.Utf8) for col_name in column_names]
                 ).map_elements(
                     lambda values: "\n\n".join(
                         value.strip()
@@ -333,7 +342,7 @@ class Audit:
 
             summary_omitted_columns = {
                 "likely_correct_source",
-                "confidence_level",
+                "research_confidence",
                 "primary_source_url",
                 "secondary_source_url",
                 "analysis_reason_code",
@@ -354,7 +363,10 @@ class Audit:
             ]
             kept_columns: list[str] = []
             for column_name in raw_df.columns:
-                if column_name == "expected_return_impact" and "analysis_reason_code" in raw_df.columns:
+                if (
+                    column_name == "expected_return_impact"
+                    and "analysis_reason_code" in raw_df.columns
+                ):
                     kept_columns.append("analysis_reason_code")
                 if column_name == "evidence_summary" and has_real_world_evidence:
                     kept_columns.append(real_world_evidence_column)
@@ -367,7 +379,9 @@ class Audit:
                 }:
                     kept_columns.append(column_name)
             kept_columns.extend(
-                column_name for column_name in summary_appended_columns if column_name in raw_df.columns
+                column_name
+                for column_name in summary_appended_columns
+                if column_name in raw_df.columns
             )
             raw_df = raw_df.select(kept_columns)
 
@@ -389,7 +403,7 @@ class Audit:
         }
         priority_column = "review priority"
         status_columns = {
-            "confidence level",
+            "research confidence",
             "event detected",
             "likely correct source",
             # "massive fix priority", # It seems to always be HIGH, so it looks weird colored.
@@ -401,15 +415,42 @@ class Audit:
         }
 
         def escape(value: str) -> str:
-            """Escape HTML text without changing slashes."""
+            """Escape HTML text without changing slashes.
+
+            Args:
+                value:
+                    Text value to escape.
+
+            Returns:
+                Escaped HTML text.
+            """
             return html_escape(value, quote=False)
 
         def escape_attribute(value: str) -> str:
-            """Escape HTML attribute text."""
+            """Escape HTML attribute text.
+
+            Args:
+                value:
+                    Attribute value to escape.
+
+            Returns:
+                Escaped HTML attribute text.
+            """
             return html_escape(value, quote=True)
 
         def cell_classes(fieldname: str, value: str) -> list[str]:
-            """Return CSS classes for a table cell."""
+            """Return CSS classes for a table cell.
+
+            Args:
+                fieldname:
+                    Display column name.
+
+                value:
+                    Cell value as text.
+
+            Returns:
+                CSS class names for the table cell.
+            """
             classes: list[str] = []
             if fieldname in frozen_column_classes:
                 classes.extend(frozen_column_classes[fieldname].split())
@@ -428,14 +469,33 @@ class Audit:
             return classes
 
         def html_cell_value(fieldname: str, value: str) -> str:
-            """Return escaped HTML for one cell value."""
+            """Return escaped HTML for one cell value.
+
+            Args:
+                fieldname:
+                    Display column name.
+
+                value:
+                    Cell value as text.
+
+            Returns:
+                Escaped HTML, including a link for URL columns.
+            """
             if fieldname in url_columns and value:
                 escaped_value = escape(value)
                 return f'<a href="{escaped_value}">{escaped_value}</a>'
             return escape(value)
 
         def pdf_column_class(fieldname: str) -> str:
-            """Return a print-oriented column class for the field."""
+            """Return a print-oriented column class for the field.
+
+            Args:
+                fieldname:
+                    Display column name.
+
+            Returns:
+                CSS class name for PDF-oriented column sizing.
+            """
             normalized_fieldname = fieldname.lower()
 
             if fieldname == "ticker":
@@ -485,7 +545,21 @@ class Audit:
             fieldnames: list[str],
             header_tooltips: dict[str, str],
         ) -> str:
-            """Build the HTML report text."""
+            """Build the HTML report text.
+
+            Args:
+                rows:
+                    Display rows to render.
+
+                fieldnames:
+                    Display column names in output order.
+
+                header_tooltips:
+                    Tooltip text by display column name.
+
+            Returns:
+                Complete HTML report text.
+            """
             title = f"{'' if actionable else 'Non-'}Actionable Audit Report"
             if summary:
                 title = f"{title} Summary"
@@ -861,8 +935,61 @@ class Audit:
             ) from exc
 
         def escape(value: str) -> str:
-            """Escape HTML text without changing slashes."""
+            """Escape HTML text without changing slashes.
+
+            Args:
+                value:
+                    Text value to escape.
+
+            Returns:
+                Escaped HTML text.
+            """
             return html_escape(value, quote=False)
+
+        def dictionary_description_html(description: str) -> str:
+            """Render data dictionary text with styled bullet rows.
+
+            Args:
+                description:
+                    Plain-text data dictionary description.
+
+            Returns:
+                HTML fragment for the description.
+            """
+            html_lines: list[str] = []
+            current_bullet_lines: list[str] = []
+
+            def flush_bullet() -> None:
+                """Append any pending bullet block to the rendered lines."""
+                if not current_bullet_lines:
+                    return
+
+                first_line = current_bullet_lines[0]
+                continuation_lines = current_bullet_lines[1:]
+                continuation_html = "".join(
+                    f'<span class="bullet-continuation">{escape(line)}</span>'
+                    for line in continuation_lines
+                )
+                html_lines.append(
+                    f'<span class="bullet-line">{escape(first_line)}{continuation_html}</span>'
+                )
+                current_bullet_lines.clear()
+
+            for line in description.splitlines():
+                if line.startswith("- "):
+                    flush_bullet()
+                    current_bullet_lines.append(line)
+                elif line == "":
+                    flush_bullet()
+                    html_lines.append('<span class="blank-line"></span>')
+                elif current_bullet_lines:
+                    current_bullet_lines.append(line)
+                else:
+                    flush_bullet()
+                    html_lines.append(f"<span>{escape(line)}</span>")
+
+            flush_bullet()
+            return "".join(html_lines)
 
         pdf_path = Path(output_path)
         pdf_path.parent.mkdir(parents=True, exist_ok=True)
@@ -885,7 +1012,11 @@ class Audit:
             "border-bottom:1px solid #dbe3ef}",
             ".entry-breakable{break-inside:auto}",
             ".key{margin:0 0 7px;color:#1e3a8a;font-size:17px;font-weight:720}",
-            ".description{margin:0;color:#111827;white-space:pre-wrap}",
+            ".description{margin:0;color:#111827}",
+            ".description span{display:block}",
+            ".description .blank-line{height:.55em}",
+            ".description .bullet-line{margin-top:.18em;padding-left:1.05em;text-indent:-.75em}",
+            ".description .bullet-continuation{margin-top:.1em;text-indent:0}",
             "</style>",
             "</head>",
             "<body>",
@@ -898,7 +1029,7 @@ class Audit:
                 [
                     f'<section class="{entry_class}">',
                     f'<h2 class="key">{escape(key)}</h2>',
-                    f'<p class="description">{escape(description)}</p>',
+                    f'<p class="description">{dictionary_description_html(description)}</p>',
                     "</section>",
                 ]
             )

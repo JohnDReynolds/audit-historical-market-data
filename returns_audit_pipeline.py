@@ -15,6 +15,30 @@ from massive_data import MassiveData
 from yfinance_data import YFinanceData
 
 
+def _normalized_event_marker_expr(column_name: str) -> pl.Expr:
+    """Return event marker text normalized only for equality comparisons.
+
+    Args:
+        column_name:
+            Name of the event-marker column to normalize.
+
+    Returns:
+        Polars expression with equivalent cash-action marker prefixes normalized.
+    """
+    return (
+        pl.col(column_name)
+        .str.replace_all("cd:", "ca:")
+        .str.replace_all("sc:", "ca:")
+        .str.replace_all("CD:", "ca:")
+        .str.replace_all("SC:", "ca:")
+    )
+
+
+def _factor_impact_expr(column_name: str) -> pl.Expr:
+    """Return the one-day impact represented by a dividend/split factor."""
+    return pl.col(column_name) - 1.0
+
+
 def build_returns_audit_lf(
     massive_data: MassiveData,
     yfinance_data: YFinanceData,
@@ -54,11 +78,11 @@ def build_returns_audit_lf(
         close_with_prior_lf,
     )
 
-    ms_actual_return_lf: pl.LazyFrame = returns_builders.build_massive_actual_return_lf(
+    ms_explicit_factor_lf: pl.LazyFrame = returns_builders.build_massive_explicit_factor_lf(
         massive_data,
         close_with_prior_lf,
     )
-    yf_actual_return_lf: pl.LazyFrame = returns_builders.build_yfinance_actual_return_lf(
+    yf_explicit_factor_lf: pl.LazyFrame = returns_builders.build_yfinance_explicit_factor_lf(
         yfinance_data,
         yfinance_close_with_prior_lf,
     )
@@ -96,7 +120,7 @@ def build_returns_audit_lf(
                 "adj_close",
                 "ms_return",
                 "ms_return_price",
-                "ms_return_div_split_implied",
+                "ms_div_split_factor_implied",
                 "heuristic_anomaly_score",
                 "ms_div_split",
                 "yf_div_split",
@@ -116,18 +140,21 @@ def build_returns_audit_lf(
             how="left",
         )
         .join(
-            ms_actual_return_lf,
+            ms_explicit_factor_lf,
             on=["ticker", "date"],
             how="left",
         )
         .join(
-            yf_actual_return_lf,
+            yf_explicit_factor_lf,
             on=["ticker", "date"],
             how="left",
         )
         .with_columns(
-            pl.col("ms_return_div_split_actual").fill_null(0.0),
-            pl.col("yf_return_div_split_actual").fill_null(0.0),
+            # Missing explicit event rows mean the source reported no dividend/split
+            # marker for that ticker/date. Treat that as neutral factor 1.0 so the
+            # later reconciliation tests can distinguish "no event" from null math.
+            pl.col("ms_div_split_factor_explicit").fill_null(1.0),
+            pl.col("yf_div_split_factor_explicit").fill_null(1.0),
         )
         .with_columns(
             # yFinance does not publish an adjustment factor directly here, so
@@ -153,9 +180,11 @@ def build_returns_audit_lf(
             pl.col("yf_div_split").shift(-1).over("ticker").alias("next_yf_div_split"),
         )
         .with_columns(
-            # Adjustment-factor changes expose discontinuities in the adjusted
-            # close chain. Comparing factor changes between vendors helps tell
-            # apart a real event from a vendor normalization issue.
+            # Adjustment-factor changes describe how each source's adjusted-close
+            # basis moves from yesterday to today. A genuine corporate action should
+            # usually appear in both event records or be explainable by a known
+            # denominator difference; an unexplained vendor-only factor move is a
+            # continuity warning.
             pl.when(
                 pl.col("prior_ms_adj_factor").is_null() | (pl.col("prior_ms_adj_factor") == 0.0)
             )
@@ -183,81 +212,83 @@ def build_returns_audit_lf(
             .alias("diff_return"),
         )
         .with_columns(
-            # Older Massive marker text is normalized before comparing marker
-            # strings so historical naming differences do not create false
-            # event-source mismatches.
+            # Preserve source marker text in output, but normalize equivalent cash
+            # marker prefixes only for this comparison. Massive distinguishes
+            # regular cash dividends (cd) from special cash dividends (sc), while
+            # yFinance exposes generic cash-action markers (ca).
             (
-                pl.col("ms_div_split").str.replace_all("CD", "CA").str.replace_all("SC", "CA")
-                != pl.col("yf_div_split")
+                _normalized_event_marker_expr("ms_div_split")
+                != _normalized_event_marker_expr("yf_div_split")
             ).alias("has_div_split_mismatch")
         )
         .with_columns(
-            # Compare adjusted-close-implied event return with explicit event
-            # records. A non-null diff means the source's adjusted return does
-            # not reconcile cleanly to its own event data.
+            # Compare adjusted-close-implied dividend/split factor with explicit
+            # source-event factor. A non-null diff means the source's adjusted
+            # return does not reconcile cleanly to its own event data under the
+            # same factor convention.
             pl.when(
-                pl.col("ms_return_div_split_implied").is_null()
-                | pl.col("ms_return_div_split_actual").is_null()
+                pl.col("ms_div_split_factor_implied").is_null()
+                | pl.col("ms_div_split_factor_explicit").is_null()
             )
             .then(None)
             .when(
                 (
-                    pl.col("ms_return_div_split_implied") - pl.col("ms_return_div_split_actual")
+                    pl.col("ms_div_split_factor_implied") - pl.col("ms_div_split_factor_explicit")
                 ).abs()
                 < schema.TOLERANCE_6
             )
             .then(None)
             .otherwise(
-                pl.col("ms_return_div_split_implied") - pl.col("ms_return_div_split_actual")
+                pl.col("ms_div_split_factor_implied") - pl.col("ms_div_split_factor_explicit")
             )
-            .alias("diff_ms_return_div_split"),
+            .alias("diff_ms_div_split_factor"),
             pl.when(
-                pl.col("yf_return_div_split_implied").is_null()
-                | pl.col("yf_return_div_split_actual").is_null()
+                pl.col("yf_div_split_factor_implied").is_null()
+                | pl.col("yf_div_split_factor_explicit").is_null()
             )
             .then(None)
             .when(
                 (
-                    pl.col("yf_return_div_split_implied") - pl.col("yf_return_div_split_actual")
+                    pl.col("yf_div_split_factor_implied") - pl.col("yf_div_split_factor_explicit")
                 ).abs()
                 < schema.TOLERANCE_6
             )
             .then(None)
             .otherwise(
-                (pl.col("yf_return_div_split_implied") - pl.col("yf_return_div_split_actual"))
+                (pl.col("yf_div_split_factor_implied") - pl.col("yf_div_split_factor_explicit"))
             )
-            .alias("diff_yf_return_div_split"),
+            .alias("diff_yf_div_split_factor"),
         )
         .with_columns(
-            # These flags separate source-event presence, event-return math
+            # These flags separate source-event presence, factor math
             # mismatches, and adjustment-factor discontinuities so the reason
             # code tree can choose the most specific explanation.
             (pl.col("ms_div_split") != "").alias("has_ms_event"),
             (pl.col("yf_div_split") != "").alias("has_yf_event"),
-            pl.col("diff_ms_return_div_split")
+            pl.col("diff_ms_div_split_factor")
             .is_not_null()
-            .alias("is_ms_div_split_return_mismatch"),
-            pl.col("diff_yf_return_div_split")
+            .alias("is_ms_div_split_factor_mismatch"),
+            pl.col("diff_yf_div_split_factor")
             .is_not_null()
-            .alias("is_yf_div_split_return_mismatch"),
+            .alias("is_yf_div_split_factor_mismatch"),
             (pl.col("adj_factor_change_diff").abs() > schema.ADJ_FACTOR_CHANGE_TOLERANCE).alias(
                 "is_adj_factor_mismatch"
             ),
         )
         .with_columns(
-            # Same event marker, same raw price return, but different event-return
-            # percentages means the vendors are applying the event amount to
-            # different historical price/adjustment bases. That is a methodology
-            # diagnostic, not a Massive adjustment-chain defect.
+            # Same event marker, same raw price return, but different event-impact
+            # percentages means the vendors are dividing the event amount by
+            # different prior-close denominators. That is a methodology diagnostic,
+            # not a Massive adjustment-chain defect.
             (
                 ~pl.col("has_div_split_mismatch")
                 & pl.col("has_ms_event")
                 & pl.col("has_yf_event")
                 & pl.col("diff_return").is_not_null()
-                & (pl.col("ms_return_div_split_actual").abs() > schema.TOLERANCE_4)
-                & (pl.col("yf_return_div_split_actual").abs() > schema.TOLERANCE_4)
+                & (_factor_impact_expr("ms_div_split_factor_explicit").abs() > schema.TOLERANCE_4)
+                & (_factor_impact_expr("yf_div_split_factor_explicit").abs() > schema.TOLERANCE_4)
                 & (
-                    (pl.col("ms_return_div_split_actual") - pl.col("yf_return_div_split_actual"))
+                    (pl.col("ms_div_split_factor_explicit") - pl.col("yf_div_split_factor_explicit"))
                     .abs()
                     > schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
@@ -265,32 +296,34 @@ def build_returns_audit_lf(
                     (pl.col("ms_return_price") - pl.col("yf_return_price")).abs()
                     <= schema.TOLERANCE_4
                 )
-            ).alias("is_event_return_basis_mismatch"),
+            ).alias("is_event_denominator_mismatch"),
         )
         .with_columns(
             # Partial Massive events sit between "missing event" and generic
             # factor-continuity defects. Massive has an event marker on the same
-            # date, but yFinance's explicit event return is materially larger and
-            # the adjusted-return gap reconciles to that missing event-return
+            # date, but yFinance's explicit event impact is materially larger and
+            # the adjusted-return gap reconciles to that missing event-impact
             # piece. This captures cases such as base-plus-variable dividends
-            # where Massive records only the base component.
+            # where Massive records only the base component. The sign check uses
+            # diff_return = yFinance - Massive, so a missing positive Massive event
+            # should make yFinance's return higher by the missing event amount.
             (
                 pl.col("has_div_split_mismatch")
                 & pl.col("has_ms_event")
                 & pl.col("has_yf_event")
                 & pl.col("diff_return").is_not_null()
-                & pl.col("ms_return_div_split_actual").is_not_null()
-                & pl.col("yf_return_div_split_actual").is_not_null()
+                & pl.col("ms_div_split_factor_explicit").is_not_null()
+                & pl.col("yf_div_split_factor_explicit").is_not_null()
                 & (
-                    pl.col("yf_return_div_split_actual").abs()
-                    > pl.col("ms_return_div_split_actual").abs()
+                    _factor_impact_expr("yf_div_split_factor_explicit").abs()
+                    > _factor_impact_expr("ms_div_split_factor_explicit").abs()
                     + schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
                 & (
                     (
                         (
-                            pl.col("yf_return_div_split_actual")
-                            - pl.col("ms_return_div_split_actual")
+                            _factor_impact_expr("yf_div_split_factor_explicit")
+                            - _factor_impact_expr("ms_div_split_factor_explicit")
                         )
                         - pl.col("diff_return")
                     ).abs()
@@ -304,28 +337,30 @@ def build_returns_audit_lf(
         )
         .with_columns(
             # Extra Massive events are the mirror image of partial events. Massive
-            # has an event marker on the same date, but its explicit event return
+            # has an event marker on the same date, but its explicit event impact
             # is materially larger than yFinance's and the negative return gap
-            # reconciles to the excess event-return piece. This covers exact
+            # reconciles to the excess event-impact piece. This covers exact
             # duplicates such as ca:0.65 ca:0.65 versus ca:0.65, as well as extra
             # same-day components that are not supported by the comparison source.
+            # With diff_return = yFinance - Massive, an extra positive Massive
+            # event should push diff_return negative by the excess amount.
             (
                 pl.col("has_div_split_mismatch")
                 & pl.col("has_ms_event")
                 & pl.col("has_yf_event")
                 & pl.col("diff_return").is_not_null()
-                & pl.col("ms_return_div_split_actual").is_not_null()
-                & pl.col("yf_return_div_split_actual").is_not_null()
+                & pl.col("ms_div_split_factor_explicit").is_not_null()
+                & pl.col("yf_div_split_factor_explicit").is_not_null()
                 & (
-                    pl.col("ms_return_div_split_actual").abs()
-                    > pl.col("yf_return_div_split_actual").abs()
+                    _factor_impact_expr("ms_div_split_factor_explicit").abs()
+                    > _factor_impact_expr("yf_div_split_factor_explicit").abs()
                     + schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
                 & (
                     (
                         (
-                            pl.col("ms_return_div_split_actual")
-                            - pl.col("yf_return_div_split_actual")
+                            _factor_impact_expr("ms_div_split_factor_explicit")
+                            - _factor_impact_expr("yf_div_split_factor_explicit")
                         )
                         + pl.col("diff_return")
                     ).abs()
@@ -361,46 +396,59 @@ def build_returns_audit_lf(
                     pl.col("has_yf_event")
                     & ~pl.col("has_ms_event")
                     & (pl.col("yf_div_split") != "")
-                    & (pl.col("yf_div_split") == pl.col("next_ms_div_split"))
+                    & (
+                        _normalized_event_marker_expr("yf_div_split")
+                        == _normalized_event_marker_expr("next_ms_div_split")
+                    )
                 )
                 | (
                     pl.col("has_yf_event")
                     & ~pl.col("has_ms_event")
                     & (pl.col("yf_div_split") != "")
-                    & (pl.col("yf_div_split") == pl.col("prior_ms_div_split"))
+                    & (
+                        _normalized_event_marker_expr("yf_div_split")
+                        == _normalized_event_marker_expr("prior_ms_div_split")
+                    )
                 )
                 | (
                     pl.col("has_ms_event")
                     & ~pl.col("has_yf_event")
                     & (pl.col("ms_div_split") != "")
-                    & (pl.col("ms_div_split") == pl.col("next_yf_div_split"))
+                    & (
+                        _normalized_event_marker_expr("ms_div_split")
+                        == _normalized_event_marker_expr("next_yf_div_split")
+                    )
                 )
                 | (
                     pl.col("has_ms_event")
                     & ~pl.col("has_yf_event")
                     & (pl.col("ms_div_split") != "")
-                    & (pl.col("ms_div_split") == pl.col("prior_yf_div_split"))
+                    & (
+                        _normalized_event_marker_expr("ms_div_split")
+                        == _normalized_event_marker_expr("prior_yf_div_split")
+                    )
                 )
             ).alias("is_event_date_mismatch")
         )
         .with_columns(
             # Missing Massive event adjustment is intentionally narrow: yFinance
-            # must have an event, Massive must not, yFinance's own event-return
-            # math must be internally inconsistent with its adjusted return, and
-            # the return difference must reconcile to the event effect.
+            # must have an event, Massive must not, and the return difference must
+            # reconcile to the yFinance event effect. yFinance does not need to
+            # have an internal event-return mismatch; the cleanest missing-Massive
+            # cases usually have yFinance's adjusted return reconciling to its own
+            # event records.
             (
                 pl.col("has_yf_event")
                 & ~pl.col("has_ms_event")
-                & pl.col("is_yf_div_split_return_mismatch")
-                & ~pl.col("is_ms_div_split_return_mismatch")
-                & (pl.col("yf_return_div_split_actual").abs() > schema.TOLERANCE_4)
+                & ~pl.col("is_ms_div_split_factor_mismatch")
+                & (_factor_impact_expr("yf_div_split_factor_explicit").abs() > schema.TOLERANCE_4)
                 & (
                     (
                         # Split-like source differences can show up as a gap
                         # between the two unadjusted source price returns.
                         (
                             pl.col("source_price_event_return")
-                            - pl.col("yf_return_div_split_actual")
+                            - _factor_impact_expr("yf_div_split_factor_explicit")
                         ).abs()
                         <= schema.TOLERANCE_4
                     )
@@ -408,20 +456,23 @@ def build_returns_audit_lf(
                         # Cash-dividend differences usually do not create a
                         # source price-return gap. They show up directly in
                         # total adjusted-return difference instead. Use the
-                        # explicit event-return value when it reconciles.
-                        (pl.col("total_return_diff") - pl.col("yf_return_div_split_actual")).abs()
+                        # explicit factor impact when it reconciles.
+                        (
+                            pl.col("total_return_diff")
+                            - _factor_impact_expr("yf_div_split_factor_explicit")
+                        ).abs()
                         <= schema.TOLERANCE_4
                     )
                     | (
-                        # Some vendors apply the cash-dividend adjustment in
-                        # the adjusted-close chain with a small difference
-                        # from the event-return value calculated from the
-                        # explicit dividend marker and prior close. When the
-                        # full Massive/yFinance return difference matches
-                        # yFinance's implied dividend/split return, treat the
-                        # issue as a missing Massive event adjustment rather
-                        # than as a yFinance event-return mismatch.
-                        (pl.col("total_return_diff") - pl.col("yf_return_div_split_implied")).abs()
+                        # As a final fallback, use yFinance's adjusted-close
+                        # chain to estimate the event effect directly. This
+                        # catches cases where explicit cash/prior-close event
+                        # math differs slightly from the event impact implied
+                        # by yFinance's adjusted/raw return relationship.
+                        (
+                            pl.col("total_return_diff")
+                            - _factor_impact_expr("yf_div_split_factor_implied")
+                        ).abs()
                         <= schema.TOLERANCE_4
                     )
                 )
@@ -433,6 +484,8 @@ def build_returns_audit_lf(
             # persistent corporate-action adjustment problem.
             (
                 (pl.col("total_return_diff") * pl.col("next_total_return_diff") < 0.0)
+                & (pl.col("total_return_diff").abs() > schema.TOLERANCE_4)
+                & (pl.col("next_total_return_diff").abs() > schema.TOLERANCE_4)
                 & (
                     (pl.col("total_return_diff") + pl.col("next_total_return_diff")).abs()
                     <= schema.REVERSAL_TOLERANCE
@@ -440,6 +493,8 @@ def build_returns_audit_lf(
             ).alias("is_next_close_reversal"),
             (
                 (pl.col("total_return_diff") * pl.col("prior_total_return_diff") < 0.0)
+                & (pl.col("total_return_diff").abs() > schema.TOLERANCE_4)
+                & (pl.col("prior_total_return_diff").abs() > schema.TOLERANCE_4)
                 & (
                     (pl.col("total_return_diff") + pl.col("prior_total_return_diff")).abs()
                     <= schema.REVERSAL_TOLERANCE
@@ -464,7 +519,6 @@ def build_returns_audit_lf(
                 "MS_MISSING_EVENT",
                 "MS_EVENT_DATE_MISMATCH",
                 "MS_ADJ_FACTOR_CONTINUITY",
-                "MS_DIV_SPLIT_RETURN_MISMATCH",
                 "MS_RETURN_METHOD_UNRESOLVED",
                 "HIGH_SCORE_ANOMALY",
             ]
@@ -494,14 +548,14 @@ def build_returns_audit_lf(
             # Returns due to price change
             "ms_return_price",
             "yf_return_price",
-            # Massive returns due to dividends and splits
-            "ms_return_div_split_implied",
-            "ms_return_div_split_actual",
-            "diff_ms_return_div_split",
-            # yFinance returns due to dividends and splits
-            "yf_return_div_split_implied",
-            "yf_return_div_split_actual",
-            "diff_yf_return_div_split",
+            # Massive dividend/split factors
+            "ms_div_split_factor_implied",
+            "ms_div_split_factor_explicit",
+            "diff_ms_div_split_factor",
+            # yFinance dividend/split factors
+            "yf_div_split_factor_implied",
+            "yf_div_split_factor_explicit",
+            "diff_yf_div_split_factor",
             # Total returns
             "ms_return",
             "yf_return",
@@ -545,10 +599,10 @@ def build_returns_audit_lf(
             # Supporting deterministic flags and values
             "has_ms_event",
             "has_yf_event",
-            "is_ms_div_split_return_mismatch",
-            "is_yf_div_split_return_mismatch",
+            "is_ms_div_split_factor_mismatch",
+            "is_yf_div_split_factor_mismatch",
             "is_adj_factor_mismatch",
-            "is_event_return_basis_mismatch",
+            "is_event_denominator_mismatch",
             "is_ms_partial_event",
             "is_ms_extra_event",
             "source_price_event_return",

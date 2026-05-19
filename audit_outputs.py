@@ -90,14 +90,14 @@ def collect_returns_output(df_lf: pl.LazyFrame) -> pl.DataFrame:
                 # Returns due to price change
                 "ms_return_price",
                 "yf_return_price",
-                # Massive returns due to dividends and splits
-                "ms_return_div_split_implied",
-                "ms_return_div_split_actual",
-                "diff_ms_return_div_split",
-                # yFinance returns due to dividends and splits
-                "yf_return_div_split_implied",
-                "yf_return_div_split_actual",
-                "diff_yf_return_div_split",
+                # Massive dividend/split factors
+                "ms_div_split_factor_implied",
+                "ms_div_split_factor_explicit",
+                "diff_ms_div_split_factor",
+                # yFinance dividend/split factors
+                "yf_div_split_factor_implied",
+                "yf_div_split_factor_explicit",
+                "diff_yf_div_split_factor",
                 # Total returns
                 "ms_return",
                 "yf_return",

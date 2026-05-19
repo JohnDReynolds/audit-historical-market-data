@@ -107,9 +107,10 @@ def audit_adjusted_ohlcv(
         pl.col("split_to").cast(pl.Float64),
     ).with_columns((pl.col("split_from") / pl.col("split_to")).alias("split_price_factor"))
 
-    # For each ticker/date, find all later split events and multiply their
-    # price factors together. The split execution date itself is excluded
-    # because backward adjustment applies to dates before the event.
+    # For each ticker/date, find all later split events and multiply their price
+    # factors together. This mirrors how split-adjusted OHLCV histories are
+    # restated: every date before a split is converted onto the post-split share
+    # basis, while the split execution date itself is already on that new basis.
     split_factors_lf: pl.LazyFrame = (
         massive_data.unadjusted_ohlcv.select("ticker", "date")
         .unique()
@@ -135,7 +136,8 @@ def audit_adjusted_ohlcv(
     ).with_columns(pl.col("adj_factor").fill_null(1.0))
 
     # Price fields move with the split price factor: after a 2-for-1 split,
-    # pre-split prices are halved in the adjusted history.
+    # pre-split prices are halved in the adjusted history so charted prices remain
+    # continuous across the split boundary.
     for column_name in price_columns:
         manual_lf = manual_lf.with_columns(
             (pl.col(column_name).cast(pl.Float64) * pl.col("adj_factor")).alias(
@@ -143,8 +145,9 @@ def audit_adjusted_ohlcv(
             )
         )
 
-    # Volume fields move inversely to price adjustment factors: after a
-    # 2-for-1 split, historical volume is doubled.
+    # Volume fields move inversely to price adjustment factors: after a 2-for-1
+    # split, historical volume is doubled so the historical share count is stated
+    # on the same post-split basis as the adjusted prices.
     for column_name in volume_columns:
         manual_lf = manual_lf.with_columns(
             (pl.col(column_name).cast(pl.Float64) / pl.col("adj_factor")).alias(
