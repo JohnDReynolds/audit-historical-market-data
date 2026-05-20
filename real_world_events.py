@@ -71,7 +71,9 @@ def add_real_world_reconciliation_flags(df: pl.DataFrame) -> pl.DataFrame:
 
     # Analyst output may provide split/spinoff impact as either an event factor
     # or an event return. Normalize factors such as 1.05 to +0.05 so the value
-    # can be compared to diff_return.
+    # can be compared to diff_return. The sign operation handles reverse-style
+    # factors symmetrically: a factor below -1 would be moved toward a return
+    # impact rather than treated as a raw factor.
     normalized_expected_return_impact: pl.Expr = (
         pl.when(
             pl.col("event_bucket").is_in(["SPLIT", "SPINOFF"])
@@ -106,6 +108,9 @@ def add_real_world_reconciliation_flags(df: pl.DataFrame) -> pl.DataFrame:
     )
 
     return (
+        # Normalize the analyst-provided expected impact before deriving support
+        # flags so every later reconciliation test uses the same event-return
+        # convention as diff_return and the explicit factor-impact columns.
         df.with_columns(normalized_expected_return_impact.alias("expected_return_impact"))
         .with_columns(
             (
@@ -190,6 +195,9 @@ def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
             # override changes the diagnostic owner; it does not change raw return
             # math or event-marker fields.
             pl.when(
+                # Research says Massive is correct and the only deterministic
+                # issue was event timing, so ownership flips from a Massive date
+                # mismatch to a yFinance date mismatch.
                 (pl.col("likely_correct_source") == "MASSIVE")
                 & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
                 & (
@@ -199,6 +207,9 @@ def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
             )
             .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
             .when(
+                # Research says Massive carries the real event and the return
+                # math supports that conclusion. Generic or Massive-leaning
+                # pre-research diagnostics become a yFinance missing-event issue.
                 (pl.col("likely_correct_source") == "MASSIVE")
                 & pl.col("analysis_reason_code").is_in(yf_missing_override_candidates)
                 & (
@@ -208,6 +219,9 @@ def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
             )
             .then(pl.lit("YF_MISSING_EVENT"))
             .when(
+                # The support flags are broader than the direct likely-source
+                # checks above because they also allow BOTH when the event math
+                # confirms Massive's treatment is economically valid.
                 pl.col("real_world_event_supports_massive")
                 & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
             )
@@ -218,6 +232,9 @@ def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
             )
             .then(pl.lit("YF_MISSING_EVENT"))
             .when(
+                # The mirror case: research and signed return math support
+                # yFinance, so selected pre-research diagnostics become a
+                # Massive missing-event issue.
                 pl.col("real_world_event_supports_yfinance")
                 & pl.col("analysis_reason_code").is_in(ms_missing_override_candidates)
             )
@@ -298,6 +315,9 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
     Returns:
         Return-audit output enriched with real-world event fields.
     """
+    # Normalize analyst output before joining so hand-authored CSV variations
+    # such as lowercase enums, padded tickers, or datetime-like dates do not
+    # prevent a researched row from matching its audit row.
     real_world_events_df: pl.DataFrame = (
         pl.read_csv(real_world_events_path)
         .select(
@@ -348,6 +368,9 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
         )
         .group_by(["ticker", "date_key"])
         .agg(
+            # If duplicate researched rows exist for a ticker/date, keep the last
+            # one deterministically. Upstream validation aims to prevent duplicates,
+            # but this keeps the join stable if a manually edited file slips through.
             pl.col("event_detected_from_file").last(),
             pl.col("event_bucket_from_file").last(),
             pl.col("expected_return_impact_from_file").last(),
@@ -361,6 +384,8 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
     )
 
     return (
+        # Coalesce keeps the pipeline's blank placeholders when no research row
+        # exists and overlays analyst research only for matching ticker/date keys.
         df.with_columns(pl.col("date").cast(pl.Utf8).str.slice(0, 10).alias("date_key"))
         .join(real_world_events_df, on=["ticker", "date_key"], how="left")
         .with_columns(

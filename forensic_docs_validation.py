@@ -10,6 +10,7 @@ import audit_schema as schema
 # Constants.
 FORENSIC_ANALYST_INSTRUCTIONS_PATH = Path("forensic_ai_analyst_instructions.txt")
 FORENSIC_ANALYST_IMPLEMENTATION_PATH = Path("forensic_ai_analyst_implementation.txt")
+FORENSIC_RESEARCH_BATCHES_PATH = Path("forensic_research_batches.py")
 
 _EVENT_DETECTED_VALUES = [
     "YES",
@@ -46,7 +47,7 @@ def validate_forensic_docs() -> None:
     _assert_column_rule_values(
         instructions_text,
         "event_bucket",
-        schema._REAL_WORLD_EVENT_BUCKETS,  # pylint: disable=protected-access
+        schema.REAL_WORLD_EVENT_BUCKETS,
     )
     _assert_column_rule_values(
         instructions_text,
@@ -58,6 +59,7 @@ def validate_forensic_docs() -> None:
         "research_confidence",
         _RESEARCH_CONFIDENCE_VALUES,
     )
+    _assert_pricing_method_convention_documented(instructions_text)
     _assert_reason_codes_documented(instructions_text)
     _assert_implementation_contract(implementation_text)
 
@@ -112,14 +114,43 @@ def _assert_reason_codes_documented(instructions_text: str) -> None:
         )
 
 
+def _assert_pricing_method_convention_documented(instructions_text: str) -> None:
+    """Validate the documented normalization for actionable close reversals.
+
+    The batch validator intentionally avoids broad semantic policy checks, but
+    the analyst instructions need to preserve the small downstream convention
+    that pricing-method rows use when a close-reversal review prefers one vendor.
+    """
+    required_phrases = [
+        "PRICING_METHOD close-reversal rows",
+        "expected_return_impact MUST be 0.0",
+        "research_confidence MUST be MEDIUM",
+    ]
+    missing_phrases = [phrase for phrase in required_phrases if phrase not in instructions_text]
+
+    if missing_phrases:
+        raise AssertionError(
+            "forensic_ai_analyst_instructions.txt is missing PRICING_METHOD "
+            "close-reversal convention phrases: "
+            + ", ".join(missing_phrases)
+        )
+
+
 def _assert_implementation_contract(implementation_text: str) -> None:
     """Validate core batch workflow phrases that code and docs assume."""
+    if not FORENSIC_RESEARCH_BATCHES_PATH.exists():
+        raise AssertionError(f"Missing required batch helper: {FORENSIC_RESEARCH_BATCHES_PATH}")
+
     required_phrases = [
-        "outputs/*_audited_returns.<date1>.<date2>.csv",
-        "<original_input_path>.researched",
+        "forensic_research_batches.py",
+        "prepare",
+        "next",
+        "validate-one",
+        "finalize",
+        "<batch_csv_path>.researched",
         "needs_review == true",
         "inputs/real_world_events.<date1>.<date2>.csv",
-        "preserve batch/file order during concatenation",
+        "process exactly one batch CSV at a time",
     ]
     missing_phrases = [phrase for phrase in required_phrases if phrase not in implementation_text]
 

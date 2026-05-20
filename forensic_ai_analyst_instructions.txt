@@ -612,6 +612,25 @@ The evidence_summary MUST explicitly explain:
 - which fields support PRICING_METHOD
 - why the discrepancy appears non-actionable
 
+For PRICING_METHOD close-reversal rows where the input row evidence supports
+MASSIVE or YFINANCE as the more reliable close series:
+- expected_return_impact MUST be 0.0
+- research_confidence MUST be MEDIUM
+
+Interpretation:
+- expected_return_impact is 0.0 because no corporate action, cash distribution,
+  or company news explains an economic event-return adjustment.
+- MEDIUM confidence means the row is actionable enough to prefer one vendor's
+  close series, but the conclusion is based on pricing-method reconciliation
+  rather than direct vendor documentation.
+
+Example:
+- A two-day close reversal has no dividend, split, spin-off, or news catalyst.
+- yFinance prices align with independent historical-price evidence.
+- Use event_detected = NO, event_bucket = PRICING_METHOD,
+  expected_return_impact = 0.0, likely_correct_source = YFINANCE,
+  research_confidence = MEDIUM.
+
 
 
 ==================================================

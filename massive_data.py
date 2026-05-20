@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -38,11 +39,13 @@ _API_KEY_ENV_VAR: str = "MASSIVE_API_KEY"
 # Load MASSIVE_API_KEY from local .env file.
 load_dotenv()
 
-_client: RESTClient | None = None
 
-
+@cache
 def _get_client() -> RESTClient:
     """Return a cached Massive REST client, creating it only when needed.
+
+    ``functools.cache`` keeps this module lazy without requiring a mutable
+    module-level client variable or ``global`` assignment.
 
     Returns:
         Massive REST client initialized from ``MASSIVE_API_KEY``.
@@ -51,20 +54,15 @@ def _get_client() -> RESTClient:
         RuntimeError:
             Raised if ``MASSIVE_API_KEY`` is missing when a client is needed.
     """
-    global _client
+    api_key: str | None = os.getenv(_API_KEY_ENV_VAR)
 
-    if _client is None:
-        api_key: str | None = os.getenv(_API_KEY_ENV_VAR)
+    if not api_key:
+        raise RuntimeError(
+            f"Environment variable {_API_KEY_ENV_VAR} is required to download Massive data. "
+            "Set it in .env or reuse existing cached input CSVs."
+        )
 
-        if not api_key:
-            raise RuntimeError(
-                f"Environment variable {_API_KEY_ENV_VAR} is required to download Massive data. "
-                "Set it in .env or reuse existing cached input CSVs."
-            )
-
-        _client = RESTClient(api_key)
-
-    return _client
+    return RESTClient(api_key)
 
 
 class MassiveData:

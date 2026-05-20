@@ -35,7 +35,13 @@ def _normalized_event_marker_expr(column_name: str) -> pl.Expr:
 
 
 def _factor_impact_expr(column_name: str) -> pl.Expr:
-    """Return the one-day impact represented by a dividend/split factor."""
+    """Return the one-day return impact represented by a dividend/split factor.
+
+    Dividend/split factors are multiplicative, so the return contribution is
+    factor - 1.0. For example, a 2-for-1 split factor of 2.0 has a +100%
+    event-return impact; a $1 dividend on a $100 prior close has an explicit
+    factor of 1.01 and therefore a +1% event-return impact.
+    """
     return pl.col(column_name) - 1.0
 
 
@@ -43,7 +49,14 @@ def _factor_diff_expr(
     implied_factor_column: str,
     explicit_factor_column: str,
 ) -> pl.Expr:
-    """Return a material implied-minus-explicit factor difference expression."""
+    """Return a material implied-minus-explicit factor difference expression.
+
+    Implied factors come from adjusted/raw return behavior; explicit factors
+    come from event records. A non-null result means the source's adjusted-close
+    chain does not reconcile to its own dividend/split records under the common
+    factor convention. Tiny differences are suppressed so rounding noise does
+    not masquerade as a corporate-action issue.
+    """
     factor_diff: pl.Expr = pl.col(implied_factor_column) - pl.col(explicit_factor_column)
 
     return (
@@ -56,7 +69,13 @@ def _factor_diff_expr(
 
 
 def _factor_change_expr(current_factor_column: str, prior_factor_column: str) -> pl.Expr:
-    """Return current/prior factor change while protecting null and zero priors."""
+    """Return current/prior factor change while protecting null and zero priors.
+
+    This measures continuity in an adjusted-close basis rather than investment
+    return. A clean corporate-action chain should move in explainable ways around
+    known events; a vendor-only basis jump is evidence for an adjustment-factor
+    continuity diagnostic.
+    """
     return (
         pl.when(pl.col(prior_factor_column).is_null() | (pl.col(prior_factor_column) == 0.0))
         .then(None)
@@ -65,7 +84,13 @@ def _factor_change_expr(current_factor_column: str, prior_factor_column: str) ->
 
 
 def _source_price_event_return_expr() -> pl.Expr:
-    """Return source price event return from yFinance raw return over Massive raw return."""
+    """Return source price event return from yFinance raw return over Massive raw return.
+
+    This isolates differences in the vendors' unadjusted price scales. Split-like
+    discrepancies can appear as raw price-return gaps even before adjusted-return
+    fields are considered. For cash dividends, the raw price-return gap is often
+    near zero and the effect appears in total adjusted-return difference instead.
+    """
     return (
         pl.when(
             pl.col("ms_return_price").is_null()
@@ -78,7 +103,13 @@ def _source_price_event_return_expr() -> pl.Expr:
 
 
 def _close_reversal_expr(neighbor_total_return_diff_column: str) -> pl.Expr:
-    """Return whether total-return differences reverse against an adjacent row."""
+    """Return whether total-return differences reverse against an adjacent row.
+
+    Equal-and-opposite vendor differences on adjacent trading days usually point
+    to a close timing/source artifact. Example: Massive is 50 bp higher than
+    yFinance on Tuesday and 50 bp lower on Wednesday; the pair nets out, so the
+    row is less likely to be a persistent adjustment-chain defect.
+    """
     return (
         (pl.col("total_return_diff") * pl.col(neighbor_total_return_diff_column) < 0.0)
         & (pl.col("total_return_diff").abs() > schema.TOLERANCE_4)
@@ -105,7 +136,14 @@ def _build_return_source_frames(
     massive_data: MassiveData,
     yfinance_data: YFinanceData,
 ) -> _ReturnSourceFrames:
-    """Build normalized source frames used by the return-audit reconciliation."""
+    """Build normalized source frames used by the return-audit reconciliation.
+
+    The builders deliberately keep raw prices, reconstructed adjusted returns,
+    explicit event factors, and compact event-marker text separate until this
+    module joins them. Keeping those ingredients separate makes later diagnostics
+    clear about what evidence they are using: source records, adjusted-close
+    behavior, raw price behavior, or marker timing.
+    """
     yfinance_lookup_lf: pl.LazyFrame = returns_builders.build_yfinance_lookup_lf(yfinance_data)
     close_lf: pl.LazyFrame = returns_builders.build_close_lf(massive_data)
 
@@ -145,7 +183,13 @@ def _build_return_source_frames(
 
 
 def _add_pre_research_classification_columns(df_lf: pl.LazyFrame) -> pl.LazyFrame:
-    """Add deterministic classification, guidance, placeholders, and review columns."""
+    """Add deterministic classification, guidance, placeholders, and review columns.
+
+    This is the pre-research view of the audit. It must be conservative because
+    it has not yet seen external evidence; generic event-source disagreements
+    remain review items, while only mechanically isolated Massive-side patterns
+    become pre-research fix candidates.
+    """
     df_lf = audit_classification.add_analysis_reason_code(df_lf)
 
     df_lf = audit_classification.add_analysis_labels(df_lf, include_real_world_reason_codes=False)
@@ -165,7 +209,12 @@ def _add_pre_research_classification_columns(df_lf: pl.LazyFrame) -> pl.LazyFram
 
 
 def _select_return_audit_columns(df_lf: pl.LazyFrame) -> pl.LazyFrame:
-    """Apply stable public aliases and select the detailed return-audit schema."""
+    """Apply stable public aliases and select the detailed return-audit schema.
+
+    Internal builder names such as ``close`` and ``adj_factor`` are Massive-side
+    values. The aliases make that source ownership explicit before the frame
+    leaves the pipeline and becomes a CSV/report contract.
+    """
     return df_lf.with_columns(
         pl.col("close").alias("ms_close"),
         pl.col("adj_factor").alias("ms_adj_factor"),

@@ -33,8 +33,14 @@ def add_analysis_labels(
     return cast(
         _FrameT,
         frame.with_columns(
+            # Blank reason codes represent rows outside the review surface, so
+            # they intentionally carry no deterministic confidence label.
             pl.when(pl.col("analysis_reason_code") == "")
             .then(pl.lit(""))
+            # Confidence is metadata about how mechanically isolated the current
+            # diagnostic is, not a claim that Massive or yFinance is correct.
+            # Real-world-only reason codes are included only after research has
+            # had a chance to rewrite source ownership.
             .when(
                 pl.col("analysis_reason_code").is_in(
                     schema.reason_codes_by_confidence(
@@ -82,6 +88,9 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
     return df_lf.with_columns(
         pl.when(~review_required_expr())
         .then(pl.lit(""))
+        # A high Massive-side anomaly with no material vendor disagreement is
+        # still review-worthy, but it should not be forced into a vendor-difference
+        # category that implies Massive and yFinance disagree economically.
         .when(
             pl.col("diff_return").is_null()
             & (pl.col("heuristic_anomaly_score") >= schema.MIN_SCORE_TO_REVIEW)
@@ -89,6 +98,9 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
         .then(pl.lit("HIGH_SCORE_ANOMALY"))
         .when(pl.col("is_event_date_mismatch"))
         .then(pl.lit("MS_EVENT_DATE_MISMATCH"))
+        # Event-date mismatches precede close reversals because a dividend or
+        # split placed one trading day off can create the same equal-and-opposite
+        # pattern that would otherwise look like a close artifact.
         .when(pl.col("is_close_reversal"))
         .then(pl.lit("CLOSE_REVERSAL"))
         .when(pl.col("is_ms_missing_event_adjustment"))
@@ -113,6 +125,9 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
         .then(pl.lit("EVENT_SOURCE_MISMATCH"))
         .when(pl.col("is_event_denominator_mismatch"))
         .then(pl.lit("EVENT_DENOMINATOR_MISMATCH"))
+        # Partial/extra event categories require same-day markers from both
+        # vendors and signed return math that reconciles to the missing or excess
+        # event component. They are more specific than generic source mismatch.
         .when(pl.col("is_ms_partial_event"))
         .then(pl.lit("MS_PARTIAL_EVENT"))
         .when(pl.col("is_ms_extra_event"))
@@ -157,6 +172,10 @@ def add_massive_fix_guidance(
     if "likely_correct_source" not in existing_columns:
         frame = cast(_FrameT, frame.with_columns(pl.lit("").alias("likely_correct_source")))
 
+    # Research can clear pre-research Massive suspicion when it concludes Massive
+    # is correct or economically equivalent. Conversely, research that names
+    # yFinance or neither source as correct should keep the row actionable for
+    # Massive review even if the pre-research diagnostic was generic.
     research_says_massive_correct: pl.Expr = pl.col("likely_correct_source").is_in(
         ["MASSIVE", "BOTH"]
     )
@@ -182,6 +201,9 @@ def add_massive_fix_guidance(
         _FrameT,
         frame.with_columns(
             research_aware_massive_needs_fix_expr.alias("massive_needs_fix"),
+            # Close reversals are not pre-research Massive fixes by default. The
+            # special branch below emits guidance only when external research says
+            # Massive is the incorrect side of the reversal.
             pl.when(research_says_massive_correct)
             .then(pl.lit(""))
             .when(close_reversal_supports_massive_fix)
@@ -217,10 +239,17 @@ def _reason_code_text_expr(
     reason_code_field: str,
     skip_reason_codes: frozenset[str] = frozenset({"CLOSE_REVERSAL"}),
 ) -> pl.Expr:
-    """Return a text expression backed by reason-code metadata."""
+    """Return a text expression backed by reason-code metadata.
+
+    The registry holds the text once, while Polars still needs an expression
+    tree to assign row-specific strings. ``CLOSE_REVERSAL`` is skipped here
+    because it has a special research-aware branch in ``add_massive_fix_guidance``.
+    """
     text_expr: pl.Expr = pl.lit("")
 
     for reason_code in reversed(list(schema.REASON_CODES.values())):
+        # Build the expression in reverse so the final tree preserves registry
+        # precedence without needing a separate mutable mapping column.
         text: str = str(getattr(reason_code, reason_code_field))
         if reason_code.code in skip_reason_codes or not text:
             continue
@@ -260,6 +289,9 @@ def add_review_columns(frame: _FrameT) -> _FrameT:
     if "analysis_reason_code" not in existing_columns:
         placeholder_exprs.append(pl.lit("").alias("analysis_reason_code"))
 
+    # Some callers add review columns before optional research fields exist. Add
+    # neutral placeholders so the priority expression can stay research-aware
+    # without forcing every upstream frame to materialize those columns first.
     if placeholder_exprs:
         frame = cast(_FrameT, frame.with_columns(*placeholder_exprs))
 

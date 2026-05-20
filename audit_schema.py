@@ -4,6 +4,9 @@ This module intentionally contains only constants and column lists so the
 main audit module is easier to scan.
 """
 
+# Errors to ignore.
+# pylint: disable=too-many-lines
+
 # Standard library imports.
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -76,7 +79,7 @@ TOLERANCE_4 = 0.0001
 TOLERANCE_6 = 0.000001
 
 
-_REAL_WORLD_EVENT_BUCKETS: list[str] = [
+REAL_WORLD_EVENT_BUCKETS: list[str] = [
     "DISTRIBUTION",
     "SPLIT",
     "SPINOFF",
@@ -268,8 +271,7 @@ REASON_CODES: dict[str, ReasonCode] = {
         confidence="MEDIUM",
         groups=frozenset({"massive_fix_pre_research", "massive_fix_post_research"}),
         massive_problem_summary=(
-            "Massive is missing the event/adjustment needed to explain the return "
-            "difference."
+            "Massive is missing the event/adjustment needed to explain the return " "difference."
         ),
         massive_why_incorrect=(
             "Massive appears incorrect because the comparison source and real-world "
@@ -286,8 +288,7 @@ REASON_CODES: dict[str, ReasonCode] = {
         confidence="MEDIUM",
         groups=frozenset({"massive_fix_pre_research", "massive_fix_post_research"}),
         massive_problem_summary=(
-            "Massive appears to have the correct event amount on the wrong trading "
-            "date."
+            "Massive appears to have the correct event amount on the wrong trading " "date."
         ),
         massive_why_incorrect=(
             "Massive appears incorrect because the real-world event date and "
@@ -310,8 +311,7 @@ REASON_CODES: dict[str, ReasonCode] = {
             }
         ),
         massive_problem_summary=(
-            "Massive records a corporate-action event, but the event amount appears "
-            "incomplete."
+            "Massive records a corporate-action event, but the event amount appears " "incomplete."
         ),
         massive_why_incorrect=(
             "Massive appears incorrect because it captured only part of the "
@@ -357,8 +357,7 @@ REASON_CODES: dict[str, ReasonCode] = {
             }
         ),
         massive_problem_summary=(
-            "Massive adjustment-factor continuity does not align with the return "
-            "difference."
+            "Massive adjustment-factor continuity does not align with the return " "difference."
         ),
         massive_why_incorrect=(
             "Massive appears incorrect because the adjusted-return difference is "
@@ -400,8 +399,7 @@ REASON_CODES: dict[str, ReasonCode] = {
             }
         ),
         massive_problem_summary=(
-            "Massive and yFinance report different dividend/split event data for the "
-            "date."
+            "Massive and yFinance report different dividend/split event data for the " "date."
         ),
         massive_why_incorrect=(
             "Massive and yFinance disagree on dividend/split event data, but the "
@@ -1088,19 +1086,13 @@ def column_names_in_group(group: str) -> set[str]:
 
     Use this when code is still working with raw DataFrame column names.
     """
-    return {
-        column.name
-        for column in _AUDIT_COLUMNS.values()
-        if group in column.groups
-    }
+    return {column.name for column in _AUDIT_COLUMNS.values() if group in column.groups}
 
 
 def reason_codes_in_group(group: str) -> list[str]:
     """Return reason codes tagged with a registry group, preserving registry order."""
     return [
-        reason_code.code
-        for reason_code in REASON_CODES.values()
-        if group in reason_code.groups
+        reason_code.code for reason_code in REASON_CODES.values() if group in reason_code.groups
     ]
 
 
@@ -1113,10 +1105,7 @@ def reason_codes_by_confidence(
         reason_code.code
         for reason_code in REASON_CODES.values()
         if reason_code.confidence == confidence
-        and (
-            include_real_world_reason_codes
-            or "real_world_only" not in reason_code.groups
-        )
+        and (include_real_world_reason_codes or "real_world_only" not in reason_code.groups)
     ]
 
 
@@ -1125,11 +1114,7 @@ def display_names_in_group(group: str) -> set[str]:
 
     Use this after report columns have been renamed for HTML/PDF output.
     """
-    return {
-        column.display_label()
-        for column in _AUDIT_COLUMNS.values()
-        if group in column.groups
-    }
+    return {column.display_label() for column in _AUDIT_COLUMNS.values() if group in column.groups}
 
 
 def frozen_display_column_classes() -> dict[str, str]:

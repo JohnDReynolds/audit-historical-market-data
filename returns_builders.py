@@ -265,6 +265,10 @@ def build_massive_adjusted_returns_lf(
         (pl.col("close") / pl.col("close").shift(1).over("ticker")).alias("raw_close_ratio"),
     )
 
+    # Rolling median/MAD gives the anomaly score a ticker-local baseline. This
+    # avoids comparing a naturally volatile security against a quiet one and
+    # keeps one-off extreme returns from dominating the baseline the way a mean
+    # and standard deviation could.
     adjusted_lf = adjusted_lf.with_columns(
         pl.col("ms_return")
         .rolling_median(window_size=60, min_samples=20)
@@ -281,6 +285,10 @@ def build_massive_adjusted_returns_lf(
         ).alias("rolling_mad_return")
     )
 
+    # Robust z-score interprets the current return relative to the recent median
+    # absolute deviation. The 1.4826 scale factor makes MAD comparable to standard
+    # deviation under a normal distribution, while still being less sensitive to
+    # outliers than ordinary standard deviation.
     adjusted_lf = adjusted_lf.with_columns(
         (
             pl.when(pl.col("rolling_mad_return").is_null())
@@ -309,19 +317,33 @@ def build_massive_adjusted_returns_lf(
 
     adjusted_lf = adjusted_lf.with_columns(
         (
+            # Very large absolute returns are suspicious even without vendor
+            # disagreement, because both sources may be carrying the same real
+            # event or the same questionable treatment.
             pl.when(pl.col("abs_return") > 0.80).then(3).otherwise(0)
             + pl.when(pl.col("abs_return") > 0.50).then(2).otherwise(0)
+            # Robust outlier points catch returns that are unusual for this
+            # ticker, not merely large in universal percentage terms.
             + pl.when(pl.col("robust_z").abs() > 12.0).then(3).otherwise(0)
             + pl.when(pl.col("robust_z").abs() > 8.0).then(2).otherwise(0)
+            # Compare against the recent absolute-return baseline so a 12% move
+            # in a usually quiet stock ranks differently from a 12% move in a
+            # highly volatile stock.
             + pl.when(pl.col("abs_return") > (10.0 * trailing_abs_median_expr))
             .then(3)
             .otherwise(0)
+            # A move much larger than both neighboring returns is a local spike;
+            # those often deserve review even when no obvious split ratio appears.
             + pl.when(
                 (pl.col("abs_return") > 0.10)
                 & (pl.col("abs_return") > (5.0 * neighbor_max_expr))
             )
             .then(3)
             .otherwise(0)
+            # Raw close ratios near common split/reverse-split ratios are strong
+            # corporate-action-shaped evidence. This is intentionally only a
+            # triage signal: event records and research decide whether the move
+            # is real and which source treated it correctly.
             + pl.when(
                 ((pl.col("raw_close_ratio") - 0.5).abs() < 0.02)
                 | ((pl.col("raw_close_ratio") - 2.0).abs() < 0.04)
@@ -332,6 +354,8 @@ def build_massive_adjusted_returns_lf(
             )
             .then(5)
             .otherwise(0)
+            # A large move followed by an opposite large move can indicate close
+            # timing, stale-close repair, or another transient source artifact.
             + pl.when(
                 (pl.col("ms_return") * pl.col("next_return") < 0.0)
                 & (pl.col("abs_return") > 0.20)
@@ -549,6 +573,9 @@ def build_yfinance_lookup_lf(yfinance_data: YFinanceData) -> pl.LazyFrame:
     # Normalize yFinance price data and calculate yFinance adjusted returns.
     # yFinance adjusted_close is treated as an external comparison series; its
     # implied dividend/split factor is calculated from prices, not from event files.
+    # The implied factor uses the same relationship as the Massive side:
+    # (1 + adjusted return) / (1 + raw price return). This lets the audit compare
+    # adjusted-close behavior with explicit event records using one convention.
     return (
         yfinance_data.ohlcv.select(
             [

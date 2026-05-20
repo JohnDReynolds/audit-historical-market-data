@@ -167,13 +167,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.025</td>
-<td class="wrap">BD announced that the Embecta spin-off was expected to be completed on 2022-04-01, with each BD shareholder receiving one Embecta share for every five BD shares held as of the 2022-03-22 record date. BD SEC reporting subsequently states the Embecta spin-off was completed on 2022-04-01 and used the same one-for-five distribution ratio. Searches found no ordinary dividend, split, merger, rights offering, or separate news catalyst that better explains the row. Input row math supports yFinance: ms_return -0.013158 versus yf_return 0.011513, so diff_return -0.024671 means Massive is lower by about the spin-off impact. Massive has no event marker and ms_div_split_factor_explicit - 1 = 0.0, while yFinance has yf_div_split sp:1.025 and yf_div_split_factor_explicit - 1 = 0.025000, matching expected_return_impact 0.025000. Massive omits the distributed Embecta value; yFinance captures the real-world spin-off adjustment.</td>
-<td class="wrap">BD completed the Embecta diabetes-care business spin-off on 2022-04-01, distributing one Embecta share for every five BD shares.</td>
+<td class="wrap">BD's SEC filing states that on 04/01/2022 the company completed the spin-off of its Diabetes Care business as Embecta and distributed one Embecta share for every five BD shares held as of the 03/22/2022 record date. Nasdaq's corporate-action alert independently confirms the Embecta spin-off, the 03/22/2022 record date, and 04/01/2022 payment/distribution date. The input row math supports yFinance: yFinance has sp:1.025 while Massive has no event marker, yf_div_split_factor_explicit is 1.025, and diff_return is -0.024671, meaning Massive's adjusted return is lower by about the missing +2.5% event impact. Massive appears to be missing the spin-off adjustment, so yFinance is more economically correct.</td>
+<td class="wrap">BD completed the Embecta spin-off on April 1, 2022, distributing Embecta shares to BD shareholders.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://investors.bd.com/news-events/press-releases/detail/89/bd-provides-update-regarding-the-planned-spinoff-of-embecta-corp">https://investors.bd.com/news-events/press-releases/detail/89/bd-provides-update-regarding-the-planned-spinoff-of-embecta-corp</a></td>
-<td class="url"><a href="https://investors.bd.com/sec-filings/all-sec-filings/content/0000010795-22-000040/bdx-20220331.htm">https://investors.bd.com/sec-filings/all-sec-filings/content/0000010795-22-000040/bdx-20220331.htm</a></td>
+<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/10795/000001079522000040/bdx-20220331.htm">https://www.sec.gov/Archives/edgar/data/10795/000001079522000040/bdx-20220331.htm</a></td>
+<td class="url"><a href="https://www.nasdaqtrader.com/TraderNews.aspx?id=ECA2022-47">https://www.nasdaqtrader.com/TraderNews.aspx?id=ECA2022-47</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.025</td>
@@ -190,13 +190,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.272</td>
-<td class="wrap">BD announced completion on 2026-02-09 of the spin-off of its Biosciences and Diagnostic Solutions business and combination with Waters. The 8-K/press release states BD shareholders would receive about 0.135 Waters shares for each BD share held as of the 2026-02-05 record date, and OCC identified the anticipated 2026-02-10 ex-date for the distribution. This is a spin-off/Reverse Morris Trust transaction, not an ordinary dividend, split, merger consideration payable in BD shares, or rights offering. Input row math supports yFinance: ms_return -0.172188 versus yf_return 0.052977, so diff_return -0.225165 means Massive is lower after yFinance recognizes distribution value. Massive has no event marker and ms_div_split_factor_explicit - 1 = 0.0, while yFinance has yf_div_split sp:1.272 and yf_div_split_factor_explicit - 1 = 0.272000, consistent with expected_return_impact 0.272000 under the audit event-return convention. The marker magnitude and signed return gap point to a missing Massive event adjustment; yFinance better reconciles to the confirmed transaction.</td>
-<td class="wrap">BD completed the Biosciences and Diagnostic Solutions spin-off/Reverse Morris Trust combination with Waters, with BDX trading ex-distribution on 2026-02-10.</td>
+<td class="wrap">BD announced the record date for the spin-off of its Biosciences &amp; Diagnostic Solutions business and disclosed that the transaction would close on 02/09/2026, with BD common stock expected to trade ex-distribution on the first trading day after closing. MIAX independently issued a corporate-action alert stating BDX had announced a spin-off effective Tuesday 02/10/2026. The input row math supports yFinance: yFinance has sp:1.272 while Massive has no event marker, yf_div_split_factor_explicit is 1.272, and diff_return is -0.225165, meaning Massive's adjusted return is materially lower because it lacks the event factor. Massive appears to be missing the spin-off/Reverse Morris Trust distribution adjustment, so yFinance is more economically correct.</td>
+<td class="wrap">BD Biosciences &amp; Diagnostic Solutions spin-off and combination with Waters, effective for trading adjustment on February 10, 2026.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://investors.bd.com/sec-filings/all-sec-filings/content/0001193125-26-042827/d104936d8k.htm">https://investors.bd.com/sec-filings/all-sec-filings/content/0001193125-26-042827/d104936d8k.htm</a></td>
-<td class="url"><a href="https://infomemo.theocc.com/infomemos?number=58295">https://infomemo.theocc.com/infomemos?number=58295</a></td>
+<td class="url"><a href="https://investors.bd.com/news-events/press-releases/detail/932/bd-announces-record-date-for-the-spin-off-of-its-biosciences-diagnostic-solutions-business">https://investors.bd.com/news-events/press-releases/detail/932/bd-announces-record-date-for-the-spin-off-of-its-biosciences-diagnostic-solutions-business</a></td>
+<td class="url"><a href="https://www.miaxglobal.com/alert/2026/02/09/miax-exchange-group-options-markets-corporate-action-alert-becton-dickinson-2">https://www.miaxglobal.com/alert/2026/02/09/miax-exchange-group-options-markets-corporate-action-alert-becton-dickinson-2</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.272</td>
@@ -213,13 +213,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.136</td>
-<td class="wrap">BorgWarner announced completion of the PHINIA spin-off on 2023-07-03, with PHINIA beginning regular NYSE trading on 2023-07-05. An independent distribution notice identifies a 0.2 PHIN share distribution per BWA share and NYSE ex-distribution date of 2023-07-05. No ordinary dividend, rights offering, merger consideration, or same-day earnings catalyst better explains the row. Input row math supports yFinance: ms_return -0.135016 versus yf_return -0.017378, diff_return -0.117638, Massive has no event marker and ms_return_div_split_explicit impact is 0.0, while yFinance has yf_div_split sp:1.136 and yf_return_div_split_explicit impact 0.136000. yFinance captures the economic value of the PHINIA distribution and Massive misses it.</td>
-<td class="wrap">BorgWarner completed the PHINIA spin-off; BWA traded ex-distribution on 2023-07-05 with PHINIA shares distributed to BWA holders.</td>
+<td class="wrap">BorgWarner announced completion of the PHINIA spin-off on 2023-07-03, and PHINIA's SEC filing states each BorgWarner holder received one PHINIA share for every five BorgWarner shares held on the 2023-06-23 record date. The row's yFinance event marker is sp:1.136 and yf_div_split_factor_explicit is 1.136, while Massive has no event marker and factor 1.0. The return gap of -0.117638 is economically consistent with Massive missing the spin-off adjustment; expected_return_impact is 1.136 - 1.0 = 0.136. yFinance better reconciles to the confirmed spin-off.</td>
+<td class="wrap">BorgWarner completed the PHINIA spin-off, with PHINIA beginning independent NYSE trading after the July 2023 separation.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://www.borgwarner.com/newsroom/press-releases/2023/07/03/borgwarner-announces-completion-of-phinia-spin-off">https://www.borgwarner.com/newsroom/press-releases/2023/07/03/borgwarner-announces-completion-of-phinia-spin-off</a></td>
-<td class="url"><a href="https://www.miaxglobal.com/sites/default/files/alert-files/BWA_Distribution_52772.pdf">https://www.miaxglobal.com/sites/default/files/alert-files/BWA_Distribution_52772.pdf</a></td>
+<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1968915/000196891524000007/phin-20231231.htm">https://www.sec.gov/Archives/edgar/data/1968915/000196891524000007/phin-20231231.htm</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.136</td>
@@ -236,8 +236,8 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.006733</td>
-<td class="wrap">Dividend history sources confirm CF Industries had a $0.50 quarterly dividend with 2024-05-14 ex-dividend date, 2024-05-15 record date, and 2024-05-31 payment. A second independent dividend source lists the same $0.50 dividend, declared 2024-04-18, with 2024-05-31 payment. No split, spin-off, merger, rights offering, or separate material news catalyst was identified for the date. Input row math supports yFinance: ms_return 0.001616 versus yf_return 0.008405, diff_return -0.006789, Massive has no event marker and ms_return_div_split_explicit impact is 0.0, while yFinance has yf_div_split ca:0.5 with yf_return_div_split_explicit impact 0.006733 and implied impact 0.006779. yFinance captures the confirmed cash distribution and Massive omits it.</td>
-<td class="wrap">CF Industries $0.50 regular quarterly cash dividend with 2024-05-14 ex-dividend date, 2024-05-15 record date, and 2024-05-31 payment.</td>
+<td class="wrap">CF Industries had a $0.50 quarterly dividend with a 2024-05-14 ex-dividend date, 2024-05-15 record date, and 2024-05-31 payment date. StockAnalysis and CoinCodex independently report the same amount and ex-dividend timing. The row's yFinance factor is 1.006733 while Massive remains 1.0, and diff_return is -0.006789. The expected cash-dividend impact is approximately $0.50 divided by the prior price, matching the row's yFinance distribution adjustment. yFinance reconciles to the confirmed dividend while Massive appears to omit the event adjustment.</td>
+<td class="wrap">CF Industries $0.50 quarterly dividend with May 14, 2024 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
@@ -259,13 +259,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.067</td>
-<td class="wrap">Comcast announced completion of the Versant separation effective 2026-01-02, with Versant regular-way trading beginning 2026-01-05. Comcast shareholders received one Versant share for every 25 Comcast shares held on the 2025-12-16 record date, and Comcast cost-basis guidance gives first trading-day prices and a separate Versant basis allocation. No ordinary split, cash dividend, merger, or rights offering better explains the row. Input row math supports yFinance: ms_return -0.047732 versus yf_return 0.016070, diff_return -0.063802, Massive has no event marker and ms_return_div_split_explicit impact is 0.0, while yFinance has yf_div_split sp:1.067 and yf_return_div_split_explicit impact 0.067000. yFinance captures the Versant distribution value and Massive misses it.</td>
-<td class="wrap">Comcast completed the Versant Media Group spin-off, distributing one Versant share per 25 Comcast shares with ex-distribution trading on 2026-01-05.</td>
+<td class="wrap">Comcast announced completion of the Versant Media Group separation effective 11:59 p.m. on 2026-01-02, with shareholders receiving one Versant share for every 25 Comcast shares held as of the 2025-12-16 record date. Investing.com independently confirmed the separation and distribution ratio. The row's yFinance event marker is sp:1.067 and yf_div_split_factor_explicit is 1.067, while Massive has no event marker and factor 1.0. The return gap of -0.063802 is consistent with Massive missing the spin-off adjustment; expected_return_impact is 1.067 - 1.0 = 0.067. yFinance reconciles to the confirmed spin-off.</td>
+<td class="wrap">Comcast completed the Versant Media Group spin-off, with the distribution reflected in trading on January 5, 2026.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1166691/000095010326000079/dp239108_ex9901.htm">https://www.sec.gov/Archives/edgar/data/1166691/000095010326000079/dp239108_ex9901.htm</a></td>
-<td class="url"><a href="https://www.cmcsa.com/shareholder-services/cost-basis-guide">https://www.cmcsa.com/shareholder-services/cost-basis-guide</a></td>
+<td class="url"><a href="https://www.investing.com/news/company-news/comcast-completes-separation-of-versant-media-group-93CH-4429488">https://www.investing.com/news/company-news/comcast-completes-separation-of-versant-media-group-93CH-4429488</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.067</td>
@@ -282,13 +282,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.128</td>
-<td class="wrap">Danaher completed the Veralto separation; shareholders received one Veralto share for every three Danaher shares held as of the 2023-09-13 record date, and regular-way Veralto trading began 2023-10-02. Veralto SEC filings independently confirm the same distribution ratio and record-date treatment. No cash dividend, ordinary split, merger, or rights event better explains the row. Input row math supports yFinance: ms_return -0.138493 versus yf_return -0.028220, diff_return -0.110273, Massive has no event marker and ms_return_div_split_explicit impact is 0.0, while yFinance has yf_div_split sp:1.128 and yf_return_div_split_explicit impact 0.128000. yFinance captures the Veralto distribution value and Massive misses it.</td>
-<td class="wrap">Danaher completed the Veralto spin-off, distributing one Veralto share for every three Danaher shares.</td>
+<td class="wrap">Danaher announced completion of the Veralto separation, with Veralto beginning regular-way NYSE trading on 2023-10-02. Danaher's release states shareholders received one Veralto share for every three Danaher shares held, and the OCC memo independently confirms the distribution with an October 2, 2023 date. The row's yFinance event marker is sp:1.128 and yf_div_split_factor_explicit is 1.128, while Massive has no event marker and factor 1.0. The return gap of -0.110273 is consistent with Massive missing the spin-off adjustment; expected_return_impact is 1.128 - 1.0 = 0.128. yFinance reconciles to the confirmed spin-off.</td>
+<td class="wrap">Danaher completed the Veralto spin-off, with Veralto regular-way trading beginning October 2, 2023.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.prnewswire.com/news-releases/danaher-corporation-completes-separation-of-veralto-corporation-301943632.html">https://www.prnewswire.com/news-releases/danaher-corporation-completes-separation-of-veralto-corporation-301943632.html</a></td>
-<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1967680/000196768023000011/vlto-20230929.htm">https://www.sec.gov/Archives/edgar/data/1967680/000196768023000011/vlto-20230929.htm</a></td>
+<td class="url"><a href="https://investors.danaher.com/2023-09-30-Danaher-Corporation-Completes-Separation-of-Veralto-Corporation?asPDF=">https://investors.danaher.com/2023-09-30-Danaher-Corporation-Completes-Separation-of-Veralto-Corporation?asPDF=</a></td>
+<td class="url"><a href="https://infomemo.theocc.com/infomemos?number=53275">https://infomemo.theocc.com/infomemos?number=53275</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.128</td>
@@ -305,13 +305,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.008501</td>
-<td class="wrap">Con Edison dividend history confirms a $0.83 quarterly cash dividend declared 2024-04-18, ex-date 2024-05-14, record date 2024-05-15, and payable 2024-06-14; StockAnalysis independently lists the same amount and dates. No split, spin-off, merger, rights offering, or separate material news catalyst was identified. Input row math supports yFinance: ms_return -0.010242 versus yf_return -0.001756, diff_return -0.008486, Massive has no event marker and ms_return_div_split_explicit impact is 0.0, while yFinance has yf_div_split ca:0.83 with yf_return_div_split_explicit impact 0.008501 and implied impact 0.008573. yFinance captures the cash distribution and Massive omits it.</td>
-<td class="wrap">Con Edison $0.83 regular quarterly cash dividend with 2024-05-14 ex-date and 2024-06-14 payment.</td>
+<td class="wrap">Consolidated Edison had a $0.83 quarterly dividend with a 2024-05-14 ex-dividend date, 2024-05-15 record date, and 2024-06-14 payment date. StockAnalysis and CoinCodex independently report the same dividend amount and timing. The row's yFinance factor is 1.008501 while Massive remains 1.0, and diff_return is -0.008486. The expected cash-dividend impact is approximately $0.83 divided by the prior price, matching the row's yFinance distribution adjustment. yFinance reconciles to the confirmed dividend while Massive appears to omit the event adjustment.</td>
+<td class="wrap">Consolidated Edison $0.83 quarterly dividend with May 14, 2024 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://investor.conedison.com/stock-information/dividend-history">https://investor.conedison.com/stock-information/dividend-history</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/ed/dividend/">https://stockanalysis.com/stocks/ed/dividend/</a></td>
+<td class="url"><a href="https://coincodex.com/stock/ED/dividend/">https://coincodex.com/stock/ED/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.83</td>
@@ -328,13 +328,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.402</td>
-<td class="wrap">Exelon announced completion of the Constellation separation on 2022-02-02. Exelon and Constellation both state that EXC shareholders received one CEG share for every three EXC shares held on the 2022-01-20 record date, with CEG regular-way trading beginning 2022-02-02. Input row math shows yFinance carrying a split/spin adjustment while Massive has no event, producing a -25.8862% Massive raw price return versus a +3.9075% yFinance adjusted return. Massive is missing the spin-off adjustment; yFinance is more likely correct.</td>
-<td class="wrap">Exelon completed the Constellation Energy spin-off, distributing 1 CEG share for every 3 EXC shares.</td>
+<td class="wrap">Nasdaq's corporate-action alert states Exelon announced a spin-off of Constellation Energy with an ex-date of 2022-02-02, and Constellation's investor FAQ confirms Exelon shareholders received one Constellation share for every three Exelon shares held as of the record date. The row's yFinance event marker is sp:1.402 and yf_div_split_factor_explicit is 1.402, while Massive has no event marker and factor 1.0. The return gap of -0.297937 is consistent with Massive missing the spin-off adjustment; expected_return_impact is 1.402 - 1.0 = 0.402. yFinance reconciles to the confirmed spin-off.</td>
+<td class="wrap">Exelon completed the Constellation Energy spin-off, effective for trading on February 2, 2022.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.exeloncorp.com/newsroom/exelon-completes-separation-of-constellation">https://www.exeloncorp.com/newsroom/exelon-completes-separation-of-constellation</a></td>
-<td class="url"><a href="https://investors.constellationenergy.com/news-releases/news-release-details/constellation-launches-largest-us-clean-energy-company-after/">https://investors.constellationenergy.com/news-releases/news-release-details/constellation-launches-largest-us-clean-energy-company-after/</a></td>
+<td class="url"><a href="https://www.nasdaqtrader.com/TraderNews.aspx?id=eca2022-5">https://www.nasdaqtrader.com/TraderNews.aspx?id=eca2022-5</a></td>
+<td class="url"><a href="https://investors.constellationenergy.com/shareholder-services/investor-faqs/">https://investors.constellationenergy.com/shareholder-services/investor-faqs/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.402</td>
@@ -351,13 +351,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.005201</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2022-10-13 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2022-10-13 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2022-10-13, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend program includes a base dividend plus a variable performance-based component, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends in this period. The row shows Massive applying only a 1.002601 factor while yFinance applies 1.005201, roughly double Massive's adjustment. That is consistent with Massive capturing only the partial/base component and yFinance capturing the full cash distribution. yFinance better reconciles to the full dividend economics.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/files/doc_news/2021/FCX_211101.pdf">https://investors.fcx.com/files/doc_news/2021/FCX_211101.pdf</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -374,13 +374,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.00331</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2023-01-12 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2023-01-12 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2023-01-12, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's annual report states the December 2022 board declaration totaled $0.15 per share, including a $0.075 base dividend and a $0.075 variable performance-based dividend, paid to shareholders of record in January 2023. StockAnalysis independently lists the FCX dividend history. The row shows Massive applying only a 1.001655 factor while yFinance applies 1.00331, exactly double the Massive component. yFinance better reconciles to the full cash distribution.</td>
+<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend, including base and variable components, for the January 2023 dividend cycle.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/files/doc_financials/2023/6dbcd92e-1964-4cf6-b78d-831fdaaa9e86.pdf">https://investors.fcx.com/files/doc_financials/2023/6dbcd92e-1964-4cf6-b78d-831fdaaa9e86.pdf</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -397,13 +397,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003648</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2023-04-13 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2023-04-13 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2023-04-13, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework uses both a base and variable performance-based component, and the company later described a $0.15 quarterly dividend as $0.075 base plus $0.075 variable. StockAnalysis lists FCX's recurring $0.15 quarterly dividends. The row shows Massive applying a 1.001824 factor while yFinance applies 1.003648, exactly double Massive's adjustment. yFinance better reflects the full cash dividend; Massive appears to capture only half of the event.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -420,13 +420,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003684</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2023-07-13 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2023-07-13 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2023-07-13, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's declared quarterly dividend structure includes a base component and a variable performance-based component, totaling $0.15 in the comparable 2023 declarations. StockAnalysis lists FCX's quarterly dividend history. The row shows Massive applying a 1.001842 factor while yFinance applies 1.003684, exactly double Massive's adjustment. yFinance better reconciles to the full dividend economics while Massive appears partial.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -443,13 +443,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.004038</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2023-10-12 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2023-10-12 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2023-10-12, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan declared $0.15 per share in cash dividends payable November 1, 2023 to shareholders of record October 13, 2023, including $0.075 base and $0.075 variable components. StockAnalysis independently lists FCX's dividend history. The row shows Massive applying a 1.002019 factor while yFinance applies 1.004038, exactly double Massive's adjustment. yFinance captures the full $0.15 distribution, while Massive appears to capture only the base or variable half.</td>
+<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend declared in September 2023, split between base and variable components.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -466,13 +466,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003632</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2024-01-11 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2024-01-11 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2024-01-11, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's 2023 Form 10-K states the combined annual rate of base and variable dividends totaled $0.60 per share and describes quarterly cash dividends totaling $0.15 per share, including $0.075 base and $0.075 variable components. StockAnalysis lists the FCX quarterly dividend history. The row shows Massive applying a 1.001816 factor while yFinance applies 1.003632, exactly double Massive's adjustment. yFinance better reconciles to the full distribution.</td>
+<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend for the January 2024 dividend cycle.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf">https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -489,13 +489,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002956</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2024-04-12 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2024-04-12 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2024-04-12, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's filings describe a quarterly $0.15 dividend composed of $0.075 base and $0.075 variable components, and StockAnalysis lists the recurring FCX dividend history. The row shows Massive applying a 1.001478 factor while yFinance applies 1.002956, exactly double Massive's adjustment. yFinance better captures the full cash distribution, while Massive appears to use only half the dividend amount.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf">https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -512,13 +512,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002925</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2024-07-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2024-07-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2024-07-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's filings describe a quarterly $0.15 dividend composed of $0.075 base and $0.075 variable components, and StockAnalysis lists the recurring FCX dividend history. The row shows Massive applying a 1.001463 factor while yFinance applies 1.002925, essentially double Massive's adjustment. yFinance better reconciles to the full cash distribution.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf">https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -535,13 +535,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.00307</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2024-10-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2024-10-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2024-10-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's filings describe a quarterly $0.15 dividend composed of $0.075 base and $0.075 variable components, and StockAnalysis lists FCX's dividend history. The row shows Massive applying a 1.001535 factor while yFinance applies 1.00307, exactly double Massive's adjustment. yFinance better captures the full distribution; Massive appears partial.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf">https://minedocs.com/25/Freeport_McMoRan_F-10K-2023.pdf</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -558,13 +558,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003797</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2025-01-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2025-01-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2025-01-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework includes equal base and variable components, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends. The row shows Massive applying a 1.001899 factor while yFinance applies 1.003797, approximately double Massive's adjustment. yFinance better reconciles to the full cash distribution while Massive appears to capture only one half of the dividend.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -581,13 +581,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.004444</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2025-04-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2025-04-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2025-04-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework includes equal base and variable components, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends. The row shows Massive applying a 1.002222 factor while yFinance applies 1.004444, exactly double Massive's adjustment. The expected impact matches the full dividend divided by prior price, so yFinance better reconciles to the real-world cash distribution.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -604,13 +604,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003287</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2025-07-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2025-07-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2025-07-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework includes equal base and variable components, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends. The row shows Massive applying a 1.001644 factor while yFinance applies 1.003287, approximately double Massive's adjustment. yFinance better reflects the full distribution; Massive appears to capture only a partial component.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -627,13 +627,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003574</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2025-10-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2025-10-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2025-10-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework includes equal base and variable components, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends. The row shows Massive applying a 1.001787 factor while yFinance applies 1.003574, exactly double Massive's adjustment. yFinance better reconciles to the full cash distribution; Massive appears to capture only half of the dividend.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -650,13 +650,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002486</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2026-01-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2026-01-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2026-01-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework includes equal base and variable components, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends, including the 2026 cycle. The row shows Massive applying a 1.001243 factor while yFinance applies 1.002486, exactly double Massive's adjustment. yFinance better reconciles to the full cash distribution; Massive appears partial.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -673,13 +673,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002197</td>
-<td class="wrap">External dividend-history sources show Freeport-McMoRan paid a $0.15 quarterly dividend on the 2026-04-15 ex-dividend date. FCX disclosures describe the payout framework as a $0.075 base dividend plus a $0.075 variable/performance-based cash dividend when both components are declared. The input row math for 2026-04-15 shows yFinance recording ca:0.15 while Massive records only cd:0.075, and the Massive/yFinance adjusted-return gap is approximately the missing second $0.075 component. Massive is therefore incomplete, while yFinance reflects the full distribution amount.</td>
-<td class="wrap">Freeport-McMoRan $0.15 quarterly cash dividend on 2026-04-15, composed of base and variable components.</td>
+<td class="wrap">Freeport-McMoRan's dividend framework includes equal base and variable components, and StockAnalysis lists FCX's recurring $0.15 quarterly dividends, including the April 2026 ex-dividend date. The row shows Massive applying a 1.001099 factor while yFinance applies 1.002197, approximately double Massive's adjustment. yFinance better reflects the full cash distribution; Massive appears to capture only half of the dividend.</td>
+<td class="wrap">Freeport-McMoRan quarterly cash dividend with base and variable components; yFinance reflects the full distribution.</td>
 <td class="wrap">Massive records a corporate-action event, but the event amount appears incomplete.</td>
 <td class="wrap">Massive appears incorrect because it captured only part of the same-day corporate-action event, and the missing event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Correct the Massive event amount to include the full corporate-action distribution, then rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://stockanalysis.com/stocks/fcx/dividend/">https://stockanalysis.com/stocks/fcx/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/FCX/">https://www.dividendhistory.org/payout/FCX/</a></td>
+<td class="url"><a href="https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx">https://investors.fcx.com/investors/news-releases/news-release-details/2023/Freeport-McMoRan-Declares-Quarterly-Cash-Dividends-on-Common-Stock-fc4bfaa40/default.aspx</a></td>
 <td>MS_PARTIAL_EVENT</td>
 <td>cd:0.075</td>
 <td>ca:0.15</td>
@@ -696,12 +696,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002953</td>
-<td class="wrap">General Motors investor dividend records and independent dividend history show a $0.12 dividend with a 2024-02-29 ex-dividend date, 2024-03-01 record date, and March 2024 payment. The input row math shows yFinance recording ca:0.12 while Massive has no dividend/split event; the yFinance adjusted return exceeds Massive by 0.2988 percentage points, approximately the $0.12 distribution divided by the prior price. Massive is missing the distribution adjustment and yFinance is more likely correct.</td>
-<td class="wrap">General Motors $0.12 quarterly dividend went ex-dividend on 2024-02-29.</td>
+<td class="wrap">General Motors declared a first-quarter 2024 cash dividend of $0.12 per share payable 2024-03-14 to shareholders of record as of 2024-03-01. StockAnalysis independently lists the 2024-02-29 ex-dividend date, $0.12 amount, 2024-03-01 record date, and 2024-03-14 payment date. The row's yFinance factor is 1.002953 while Massive remains 1.0, and diff_return is -0.002988. The expected cash-dividend impact is approximately $0.12 divided by the prior price, matching yFinance's event adjustment. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">General Motors $0.12 quarterly dividend with February 29, 2024 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://investor.gm.com/shareholders/stock-information/">https://investor.gm.com/shareholders/stock-information/</a></td>
+<td class="url"><a href="https://investor.gm.com/news-releases/news-release-details/gm-declares-quarterly-dividend-16">https://investor.gm.com/news-releases/news-release-details/gm-declares-quarterly-dividend-16</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/gm/dividend/">https://stockanalysis.com/stocks/gm/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -719,13 +719,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.028</td>
-<td class="wrap">Illumina completed the GRAIL spin-off, with GRAIL beginning regular-way Nasdaq trading under GRAL on 2024-06-25; shareholders received one GRAIL share for every six Illumina shares held as of the June 13 record date. The input row math shows yFinance carrying a sp:1.028 event while Massive has no event, causing Massive to show a -0.3628% price return versus yFinance +2.4270%. Massive is missing the spin-off adjustment and yFinance is more likely correct.</td>
-<td class="wrap">Illumina completed the GRAIL spin-off; ILMN holders received 1 GRAL share for every 6 ILMN shares.</td>
+<td class="wrap">Illumina's board approved the GRAIL spin-off and declared a pro rata distribution in which Illumina shareholders received one GRAIL share for every six Illumina shares held as of the record date; GRAIL regular-way trading began on Nasdaq on 2024-06-25. The OCC memo independently confirms the GRAIL distribution and June 25, 2024 ex-date. The row's yFinance event marker is sp:1.028 and yf_div_split_factor_explicit is 1.028, while Massive has no event marker and factor 1.0. The return gap of -0.027898 is consistent with Massive missing the spin-off adjustment; expected_return_impact is 1.028 - 1.0 = 0.028. yFinance reconciles to the confirmed spin-off.</td>
+<td class="wrap">Illumina completed the GRAIL spin-off, with GRAIL regular-way trading beginning June 25, 2024.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.illumina.com/company/news-center/press-releases/2024/f58e4c66-931c-40ab-ad3f-e3e9e10da495.html">https://www.illumina.com/company/news-center/press-releases/2024/f58e4c66-931c-40ab-ad3f-e3e9e10da495.html</a></td>
-<td class="url"><a href="https://finance.yahoo.com/news/illumina-announces-completion-grail-spin-103312168.html">https://finance.yahoo.com/news/illumina-announces-completion-grail-spin-103312168.html</a></td>
+<td class="url"><a href="https://investors.grail.com/news-releases/news-release-details/illumina-board-directors-approves-spin-grail-declares-spin/">https://investors.grail.com/news-releases/news-release-details/illumina-board-directors-approves-spin-grail-declares-spin/</a></td>
+<td class="url"><a href="https://infomemo.theocc.com/infomemos?number=54734">https://infomemo.theocc.com/infomemos?number=54734</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.028</td>
@@ -742,13 +742,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.056</td>
-<td class="wrap">International Paper completed the Sylvamo spin-off on 2021-10-01, and Sylvamo SEC filing evidence states shareholders received one Sylvamo share for every 11 International Paper shares held as of the record date. The input row math shows yFinance carrying a sp:1.056 adjustment while Massive has no event, leaving Massive at a -4.7568% raw return versus yFinance +0.5768%. Massive is missing the spin-off adjustment and yFinance is more likely correct.</td>
-<td class="wrap">International Paper completed the Sylvamo spin-off, distributing 1 SLVM share for every 11 IP shares.</td>
+<td class="wrap">International Paper completed the spin-off of Sylvamo on 2021-10-01. The SEC filing states shareholders received one Sylvamo share for every 11 International Paper shares held as of the September 15, 2021 record date, and the company release confirms the completion of the Sylvamo spin-off. The row's yFinance event marker is sp:1.056 and yf_div_split_factor_explicit is 1.056, while Massive has no event marker and factor 1.0. The return gap of -0.053336 is consistent with Massive missing the spin-off adjustment; expected_return_impact is 1.056 - 1.0 = 0.056. yFinance reconciles to the confirmed spin-off.</td>
+<td class="wrap">International Paper completed the Sylvamo spin-off on October 1, 2021.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.prnewswire.com/news-releases/international-paper-company-announces-completion-of-sylvamo-corporation-spin-off-301389456.html">https://www.prnewswire.com/news-releases/international-paper-company-announces-completion-of-sylvamo-corporation-spin-off-301389456.html</a></td>
-<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1856485/000185648522000010/syl-20211231.htm">https://www.sec.gov/Archives/edgar/data/1856485/000185648522000010/syl-20211231.htm</a></td>
+<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/51434/000005143422000025/ip-20220331.htm">https://www.sec.gov/Archives/edgar/data/51434/000005143422000025/ip-20220331.htm</a></td>
+<td class="url"><a href="https://internationalpaper2022rd.q4web.com/news/news-details/2021/International-Paper-Company-Announces-Completion-of-Sylvamo-Corporation-Spin-Off/default.aspx">https://internationalpaper2022rd.q4web.com/news/news-details/2021/International-Paper-Company-Announces-Completion-of-Sylvamo-Corporation-Spin-Off/default.aspx</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.056</td>
@@ -765,13 +765,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.007699</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.17 quarterly cash dividend with an ex-dividend date of 2021-06-08. The input row math shows yFinance recording ca:0.17 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.17 quarterly cash dividend went ex-dividend on 2021-06-08.</td>
+<td class="wrap">Kimco Realty paid recurring quarterly cash dividends during 2021, and dividend-history sources list the relevant ex-dividend schedule and amounts. The row's yFinance factor is 1.007699 while Massive remains 1.0, and diff_return is -0.007787. The expected cash-dividend impact is consistent with the quarterly dividend divided by the prior share price. yFinance reconciles to the cash distribution while Massive appears to omit the event adjustment.</td>
+<td class="wrap">Kimco Realty quarterly cash dividend with June 2021 ex-dividend timing.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://cashstat.net/en/NYSE/KIM/dividends">https://cashstat.net/en/NYSE/KIM/dividends</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/kimco-realty-corporation-kim-ex-dividend-date-scheduled-for-december-08-2021">https://www.nasdaq.com/articles/kimco-realty-corporation-kim-ex-dividend-date-scheduled-for-december-08-2021</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.17</td>
@@ -788,13 +788,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.007795</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.17 quarterly cash dividend with an ex-dividend date of 2021-09-08. The input row math shows yFinance recording ca:0.17 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.17 quarterly cash dividend went ex-dividend on 2021-09-08.</td>
+<td class="wrap">Kimco Realty paid recurring quarterly cash dividends during 2021, and dividend-history sources list the relevant ex-dividend schedule and amounts. The row's yFinance factor is 1.007795 while Massive remains 1.0, and diff_return is -0.007809. The expected cash-dividend impact is consistent with the quarterly dividend divided by the prior share price. yFinance reconciles to the cash distribution while Massive appears to omit the event adjustment.</td>
+<td class="wrap">Kimco Realty quarterly cash dividend with September 2021 ex-dividend timing.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://cashstat.net/en/NYSE/KIM/dividends">https://cashstat.net/en/NYSE/KIM/dividends</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/kimco-realty-corporation-kim-ex-dividend-date-scheduled-for-december-08-2021">https://www.nasdaq.com/articles/kimco-realty-corporation-kim-ex-dividend-date-scheduled-for-december-08-2021</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.17</td>
@@ -811,13 +811,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.0072</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.17 quarterly cash dividend with an ex-dividend date of 2021-12-08. The input row math shows yFinance recording ca:0.17 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.17 quarterly cash dividend went ex-dividend on 2021-12-08.</td>
+<td class="wrap">Nasdaq lists Kimco Realty's December 8, 2021 ex-dividend date, and CashStat lists the 2021-12-08 dividend amount and payment timing. The row's yFinance factor is 1.0072 while Massive remains 1.0, and diff_return is -0.007265. The expected cash-dividend impact is consistent with the quarterly dividend divided by the prior share price. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">Kimco Realty quarterly cash dividend with December 8, 2021 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/kimco-realty-corporation-kim-ex-dividend-date-scheduled-for-december-08-2021">https://www.nasdaq.com/articles/kimco-realty-corporation-kim-ex-dividend-date-scheduled-for-december-08-2021</a></td>
+<td class="url"><a href="https://cashstat.net/en/NYSE/KIM/dividends">https://cashstat.net/en/NYSE/KIM/dividends</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.17</td>
@@ -834,13 +834,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.008024</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.19 quarterly cash dividend with an ex-dividend date of 2022-03-09. The input row math shows yFinance recording ca:0.19 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.19 quarterly cash dividend went ex-dividend on 2022-03-09.</td>
+<td class="wrap">Kimco's Q4/full-year 2021 results release says the board raised the quarterly cash dividend on common shares to $0.19 payable March 24, 2022 to shareholders of record March 10, 2022. CashStat lists the 2022-03-09 dividend date and $0.19 amount. The row's yFinance factor is 1.008024 while Massive remains 1.0, and diff_return is -0.008174. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">Kimco Realty $0.19 quarterly cash dividend with March 2022 ex-dividend timing.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://www.businesswire.com/news/home/20220210005319/en/Kimco-Realty-Announces-Fourth-Quarter-and-Full-Year-2021-Results">https://www.businesswire.com/news/home/20220210005319/en/Kimco-Realty-Announces-Fourth-Quarter-and-Full-Year-2021-Results</a></td>
+<td class="url"><a href="https://cashstat.net/en/NYSE/KIM/dividends">https://cashstat.net/en/NYSE/KIM/dividends</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.19</td>
@@ -857,13 +857,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.008684</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.20 quarterly cash dividend with an ex-dividend date of 2022-06-08. The input row math shows yFinance recording ca:0.20 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.20 quarterly cash dividend went ex-dividend on 2022-06-08.</td>
+<td class="wrap">Dividend-history sources show Kimco Realty continued quarterly common dividends in 2022. The row's yFinance factor is 1.008684 while Massive remains 1.0, and diff_return is -0.008445. The expected cash-dividend impact is consistent with the quarterly dividend divided by the prior share price. yFinance reconciles to the cash distribution while Massive appears to omit the event adjustment.</td>
+<td class="wrap">Kimco Realty quarterly cash dividend with June 2022 ex-dividend timing.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://cashstat.net/en/NYSE/KIM/dividends">https://cashstat.net/en/NYSE/KIM/dividends</a></td>
+<td class="url"><a href="https://dividendhistory.org/payout/KIM/">https://dividendhistory.org/payout/KIM/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.2</td>
@@ -880,13 +880,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.010115</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.22 quarterly cash dividend with an ex-dividend date of 2022-09-08. The input row math shows yFinance recording ca:0.22 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.22 quarterly cash dividend went ex-dividend on 2022-09-08.</td>
+<td class="wrap">Kimco's Q2 2022 release described a third consecutive quarterly common dividend increase, and dividend-history sources show the 2022 quarterly cash-dividend schedule. The row's yFinance factor is 1.010115 while Massive remains 1.0, and diff_return is -0.010176. The expected cash-dividend impact is consistent with the raised quarterly dividend divided by the prior share price. yFinance reconciles to the cash distribution while Massive appears to omit the event adjustment.</td>
+<td class="wrap">Kimco Realty raised quarterly cash dividend with September 2022 ex-dividend timing.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://investors.kimcorealty.com/files/doc_financials/2022/q2/07.28.22-2Q22-KIM-Earnings-Release.pdf">https://investors.kimcorealty.com/files/doc_financials/2022/q2/07.28.22-2Q22-KIM-Earnings-Release.pdf</a></td>
+<td class="url"><a href="https://dividendhistory.org/payout/KIM/">https://dividendhistory.org/payout/KIM/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.22</td>
@@ -903,13 +903,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.010459</td>
-<td class="wrap">External Kimco Realty dividend-history sources confirm a $0.23 quarterly cash dividend with an ex-dividend date of 2022-12-08. The input row math shows yFinance recording ca:0.23 while Massive records no dividend/split event; the adjusted-return difference is approximately the cash distribution divided by the prior price. Massive is missing the dividend adjustment and yFinance is more likely correct for this audited row.</td>
-<td class="wrap">Kimco Realty $0.23 quarterly cash dividend went ex-dividend on 2022-12-08.</td>
+<td class="wrap">Kimco announced and raised common-stock dividends in 2022, and dividend-history sources show the December 2022 dividend timing and amount. The row's yFinance factor is 1.010459 while Massive remains 1.0, and diff_return is -0.010454. The expected cash-dividend impact is consistent with the quarterly dividend divided by the prior share price. yFinance reconciles to the cash distribution while Massive appears to omit the event adjustment.</td>
+<td class="wrap">Kimco Realty quarterly cash dividend with December 2022 ex-dividend timing.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kim/dividend/">https://stockanalysis.com/stocks/kim/dividend/</a></td>
-<td class="url"><a href="https://www.streetinsider.com/dividend_history.php?q=KIM">https://www.streetinsider.com/dividend_history.php?q=KIM</a></td>
+<td class="url"><a href="https://investors.kimcorealty.com/news-events/press-releases/news-details/2022/Kimco-Realty-Declares-and-Raises-Dividends-on-Common-Stock-and-Declares-Class-L-and-Class-M-Preferred-Stock-Dividends-f9b10f999/default.aspx">https://investors.kimcorealty.com/news-events/press-releases/news-details/2022/Kimco-Realty-Declares-and-Raises-Dividends-on-Common-Stock-and-Declares-Class-L-and-Class-M-Preferred-Stock-Dividends-f9b10f999/default.aspx</a></td>
+<td class="url"><a href="https://cashstat.net/en/NYSE/KIM/dividends">https://cashstat.net/en/NYSE/KIM/dividends</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.23</td>
@@ -926,13 +926,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002194</td>
-<td class="wrap">External KKR dividend-history sources confirm a $0.145 quarterly cash dividend with ex-dividend date 2021-08-13. The input row math shows yFinance recording ca:0.145 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted dividend effect. Massive is missing the distribution adjustment and yFinance is more likely correct for this row.</td>
-<td class="wrap">KKR &amp; Co. $0.145 quarterly cash dividend went ex-dividend on 2021-08-13.</td>
+<td class="wrap">Nasdaq reported KKR would trade ex-dividend on 2021-08-13 for a $0.145 cash dividend payable 2021-08-31, and DividendHistory independently lists the same 2021-08-13 ex-date, $0.145 amount, 2021-08-16 record date, and 2021-08-31 payment date. The row's yFinance factor is 1.002194 while Massive remains 1.0, and diff_return is -0.002196. The expected cash-dividend impact is approximately $0.145 divided by the prior price, matching yFinance's adjustment. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">KKR $0.145 quarterly dividend with August 13, 2021 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://www.nasdaq.com/articles/kkr-co.-inc.-kkr-ex-dividend-date-scheduled-for-august-13-2021-2021-08-12">https://www.nasdaq.com/articles/kkr-co.-inc.-kkr-ex-dividend-date-scheduled-for-august-13-2021-2021-08-12</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/KKR/">https://www.dividendhistory.org/payout/KKR/</a></td>
+<td class="url"><a href="https://dividendhistory.net/kkr-dividend-yield">https://dividendhistory.net/kkr-dividend-yield</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.145</td>
@@ -949,13 +949,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.001857</td>
-<td class="wrap">External KKR dividend-history sources confirm a $0.145 quarterly cash dividend with ex-dividend date 2021-11-12. The input row math shows yFinance recording ca:0.145 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted dividend effect. Massive is missing the distribution adjustment and yFinance is more likely correct for this row.</td>
-<td class="wrap">KKR &amp; Co. $0.145 quarterly cash dividend went ex-dividend on 2021-11-12.</td>
+<td class="wrap">DividendHistory and Strike.Market independently list KKR's 2021-11-12 ex-dividend date, $0.145 dividend amount, 2021-11-15 record date, and 2021-11-30 payment date. The row's yFinance factor is 1.001857 while Massive remains 1.0, and diff_return is -0.001876. The expected cash-dividend impact is approximately $0.145 divided by the prior price, matching yFinance's adjustment. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">KKR $0.145 quarterly dividend with November 12, 2021 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kkr/dividend/">https://stockanalysis.com/stocks/kkr/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/KKR/">https://www.dividendhistory.org/payout/KKR/</a></td>
+<td class="url"><a href="https://dividendhistory.net/kkr-dividend-yield">https://dividendhistory.net/kkr-dividend-yield</a></td>
+<td class="url"><a href="https://strike.market/stocks/KKR/dividends">https://strike.market/stocks/KKR/dividends</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.145</td>
@@ -972,13 +972,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.002331</td>
-<td class="wrap">External KKR dividend-history sources confirm a $0.145 quarterly cash dividend with ex-dividend date 2022-02-17. The input row math shows yFinance recording ca:0.145 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted dividend effect. Massive is missing the distribution adjustment and yFinance is more likely correct for this row.</td>
-<td class="wrap">KKR &amp; Co. $0.145 quarterly cash dividend went ex-dividend on 2022-02-17.</td>
+<td class="wrap">DividendHistory lists KKR's 2022-02-17 ex-dividend date, $0.145 dividend amount, 2022-02-18 record date, and 2022-03-04 payment date; MarketCap independently lists KKR's 2022 dividend payment history. The row's yFinance factor is 1.002331 while Massive remains 1.0, and diff_return is -0.002194. The expected cash-dividend impact is consistent with the $0.145 dividend divided by the prior price. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">KKR $0.145 quarterly dividend with February 17, 2022 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kkr/dividend/">https://stockanalysis.com/stocks/kkr/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/KKR/">https://www.dividendhistory.org/payout/KKR/</a></td>
+<td class="url"><a href="https://dividendhistory.net/kkr-dividend-yield">https://dividendhistory.net/kkr-dividend-yield</a></td>
+<td class="url"><a href="https://marketcap.ru/en/stocks/KKR/dividends">https://marketcap.ru/en/stocks/KKR/dividends</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.145</td>
@@ -995,13 +995,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003209</td>
-<td class="wrap">External KKR dividend-history sources confirm a $0.155 quarterly cash dividend with ex-dividend date 2022-05-13. The input row math shows yFinance recording ca:0.155 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted dividend effect. Massive is missing the distribution adjustment and yFinance is more likely correct for this row.</td>
-<td class="wrap">KKR &amp; Co. $0.155 quarterly cash dividend went ex-dividend on 2022-05-13.</td>
+<td class="wrap">DividendHistory lists KKR's 2022-05-13 ex-dividend date, $0.155 dividend amount, 2022-05-16 record date, and 2022-05-31 payment date; MarketCap independently lists the 2022-05-13 dividend amount. The row's yFinance factor is 1.003209 while Massive remains 1.0, and diff_return is -0.003437. The expected cash-dividend impact is consistent with the $0.155 dividend divided by the prior price. yFinance reconciles to the confirmed dividend while Massive appears to omit it.</td>
+<td class="wrap">KKR $0.155 quarterly dividend with May 13, 2022 ex-dividend date.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://stockanalysis.com/stocks/kkr/dividend/">https://stockanalysis.com/stocks/kkr/dividend/</a></td>
-<td class="url"><a href="https://www.dividendhistory.org/payout/KKR/">https://www.dividendhistory.org/payout/KKR/</a></td>
+<td class="url"><a href="https://dividendhistory.net/kkr-dividend-yield">https://dividendhistory.net/kkr-dividend-yield</a></td>
+<td class="url"><a href="https://marketcap.ru/en/stocks/KKR/dividends">https://marketcap.ru/en/stocks/KKR/dividends</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:0.155</td>
@@ -1018,12 +1018,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003507</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.06 quarterly dividend corresponding to the 2021-06-02 ex-dividend date. The input row math shows yFinance recording ca:1.06 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced a $1.06 quarterly cash dividend payable on 2021-06-17 to holders of record on 2021-06-03, and dividend-history data identifies 2021-06-02 as the ex-dividend date. The input row math shows yFinance recording ca:1.06 while Massive records no dividend/split event; the yFinance explicit factor of 1.003507 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.06 quarterly cash dividend went ex-dividend on 2021-06-02.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2021/linde-plc-linde-declares-dividend-in-second-quarter-2021">https://www.linde.com/news-and-media/2021/linde-plc-linde-declares-dividend-in-second-quarter-2021</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -1041,13 +1041,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003377</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.06 quarterly dividend corresponding to the 2021-09-02 ex-dividend date. The input row math shows yFinance recording ca:1.06 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced its third-quarter 2021 dividend, and Nasdaq reports LIN began trading ex-dividend on 2021-09-02 with a $1.06 cash dividend payable on 2021-09-17. The input row math shows yFinance recording ca:1.06 while Massive records no dividend/split event; the yFinance explicit factor of 1.003377 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.06 quarterly cash dividend went ex-dividend on 2021-09-02.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
-<td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2021/linde-plc-linde-declares-dividend-in-third-quarter-2021">https://www.linde.com/news-and-media/2021/linde-plc-linde-declares-dividend-in-third-quarter-2021</a></td>
+<td class="url"><a href="https://www.nasdaq.com/articles/linde-plc-lin-ex-dividend-date-scheduled-for-september-02-2021-2021-09-01">https://www.nasdaq.com/articles/linde-plc-lin-ex-dividend-date-scheduled-for-september-02-2021-2021-09-01</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>ca:1.06</td>
@@ -1064,12 +1064,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.00333</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.06 quarterly dividend corresponding to the 2021-12-02 ex-dividend date. The input row math shows yFinance recording ca:1.06 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced a $1.06 quarterly cash dividend payable on 2021-12-17 to holders of record on 2021-12-03, and dividend-history data identifies 2021-12-02 as the ex-dividend date. The input row math shows yFinance recording ca:1.06 while Massive records no dividend/split event; the yFinance explicit factor of 1.003330 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.06 quarterly cash dividend went ex-dividend on 2021-12-02.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2021/linde-plc-linde-declares-dividend-in-fourth-quarter-2021">https://www.linde.com/news-and-media/2021/linde-plc-linde-declares-dividend-in-fourth-quarter-2021</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -1087,12 +1087,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003996</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.17 quarterly dividend corresponding to the 2022-03-10 ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced a quarterly dividend increase to $1.17 per share, payable on 2022-03-25 to holders of record on 2022-03-11, and dividend-history data identifies 2022-03-10 as the ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the yFinance explicit factor of 1.003996 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.17 quarterly cash dividend went ex-dividend on 2022-03-10.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2022/linde-plc-linde-announces-dividend-increase-for-2022-and-new-10-billion-share-repurchase-program">https://www.linde.com/news-and-media/2022/linde-plc-linde-announces-dividend-increase-for-2022-and-new-10-billion-share-repurchase-program</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -1110,12 +1110,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003661</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.17 quarterly dividend corresponding to the 2022-06-02 ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced a $1.17 quarterly cash dividend payable on 2022-06-17 to holders of record on 2022-06-03, and dividend-history data identifies 2022-06-02 as the ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the yFinance explicit factor of 1.003661 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.17 quarterly cash dividend went ex-dividend on 2022-06-02.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2022/linde-plc-linde-declares-dividend-in-second-quarter-2022">https://www.linde.com/news-and-media/2022/linde-plc-linde-declares-dividend-in-second-quarter-2022</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -1133,12 +1133,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.004136</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.17 quarterly dividend corresponding to the 2022-09-01 ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced a $1.17 quarterly cash dividend payable on 2022-09-16 to holders of record on 2022-09-02, and dividend-history data identifies 2022-09-01 as the ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the yFinance explicit factor of 1.004136 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.17 quarterly cash dividend went ex-dividend on 2022-09-01.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2022/linde-plc-linde-declares-dividend-in-third-quarter-2022">https://www.linde.com/news-and-media/2022/linde-plc-linde-declares-dividend-in-third-quarter-2022</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -1156,12 +1156,12 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.003477</td>
-<td class="wrap">Linde dividend information and market dividend-history sources confirm a $1.17 quarterly dividend corresponding to the 2022-12-01 ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the adjusted-return difference reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
+<td class="wrap">Linde announced a $1.17 quarterly cash dividend payable on 2022-12-16 to holders of record on 2022-12-02, and dividend-history data identifies 2022-12-01 as the ex-dividend date. The input row math shows yFinance recording ca:1.17 while Massive records no dividend/split event; the yFinance explicit factor of 1.003477 reconciles to the omitted cash distribution. Massive is missing the dividend adjustment and yFinance is more likely correct.</td>
 <td class="wrap">Linde $1.17 quarterly cash dividend went ex-dividend on 2022-12-01.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.linde.com/investors/stock-and-dividend-information">https://www.linde.com/investors/stock-and-dividend-information</a></td>
+<td class="url"><a href="https://www.linde.com/news-and-media/2022/linde-plc-linde-declares-dividend-in-fourth-quarter-2022">https://www.linde.com/news-and-media/2022/linde-plc-linde-declares-dividend-in-fourth-quarter-2022</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/lin/dividend/">https://stockanalysis.com/stocks/lin/dividend/</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
@@ -1179,13 +1179,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.048</td>
-<td class="wrap">Merck completed the Organon spin-off on 2021-06-03, and OCC adjustment materials indicate a distribution ratio of 0.10 OGN share for each MRK share held. The input row math shows yFinance carrying sp:1.048 while Massive has no event, producing a -2.5834% Massive raw return versus yFinance +2.0926%. Massive is missing the spin-off adjustment and yFinance is more likely correct.</td>
-<td class="wrap">Merck completed the Organon spin-off, distributing OGN shares to MRK holders.</td>
+<td class="wrap">Merck announced completion of the Organon spin-off on 2021-06-03, with Organon beginning regular-way NYSE trading under OGN that day. Merck's distribution notice shows the special dividend of Organon stock was distributed on 2021-06-02 and that MRK regular-way trading commenced without the distribution entitlement on 2021-06-03. The input row math shows yFinance applying a 1.048 explicit factor while Massive applies 1.0, and the large return difference reconciles to Massive missing the spin-off adjustment. yFinance is more likely correct.</td>
+<td class="wrap">Merck completed the Organon spin-off, with MRK trading ex-distribution on 2021-06-03.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://www.merck.com/news/merck-announces-completion-of-organon-co-spinoff/">https://www.merck.com/news/merck-announces-completion-of-organon-co-spinoff/</a></td>
-<td class="url"><a href="https://infomemo.theocc.com/infomemos?number=48683">https://infomemo.theocc.com/infomemos?number=48683</a></td>
+<td class="url"><a href="https://s2.q4cdn.com/584635680/files/doc_news/Merck-Declares-Record-Date-and-Dividend-for-the-Organon--Co.-Spinoff-2021.pdf">https://s2.q4cdn.com/584635680/files/doc_news/Merck-Declares-Record-Date-and-Dividend-for-the-Organon--Co.-Spinoff-2021.pdf</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.048</td>
@@ -1202,8 +1202,8 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.032</td>
-<td class="wrap">Realty Income completed the Orion Office REIT spin-off on 2021-11-15; shareholders received one ONL share for every ten Realty Income shares held. OCC materials also show a 0.10 ONL distribution ratio for each O share. The input row math shows yFinance carrying sp:1.032 while Massive has no event, so Massive is missing the spin-off adjustment and yFinance is more likely correct.</td>
-<td class="wrap">Realty Income completed the Orion Office REIT spin-off, distributing 1 ONL share for every 10 O shares.</td>
+<td class="wrap">Realty Income announced on 2021-11-15 that it completed the spin-off of substantially all of its office assets into Orion Office REIT, with Realty Income holders receiving one Orion share for every ten Realty Income shares held as of the record date. The OCC notice confirms the distribution and NYSE ex-distribution date mechanics for 2021-11-15. The input row math shows yFinance applying a 1.032 explicit factor while Massive applies 1.0, and the large return difference reconciles to Massive missing the spin-off adjustment. yFinance is more likely correct.</td>
+<td class="wrap">Realty Income completed the Orion Office REIT spin-off, effective for O trading on 2021-11-15.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
@@ -1225,13 +1225,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.324</td>
-<td class="wrap">The input row shows yFinance carrying a split-like adjustment sp:1.324 while Massive has no event; Massive shows a -18.7% price return whereas yFinance shows a +7.7% adjusted return. External research confirms AT&amp;T completed the WarnerMedia separation and merger with Discovery, and AT&amp;T holders received 0.241917 WBD shares for each AT&amp;T share while keeping their AT&amp;T shares. This Reverse Morris Trust/spin-off required an adjustment to T history; yFinance reflects the event and Massive appears to miss the adjustment.</td>
-<td class="wrap">AT&amp;T completed the WarnerMedia spin-off/merger into Warner Bros. Discovery, with T holders receiving 0.241917 WBD shares per T share.</td>
+<td class="wrap">AT&amp;T's WarnerMedia transaction materials show AT&amp;T completed the WarnerMedia distribution and Discovery combination in April 2022, and the SEC-filed release says Warner Bros. Discovery began trading under WBD on 2022-04-11. The input row math shows yFinance applying a 1.324 explicit factor while Massive applies 1.0; the large return difference reconciles to Massive missing the spin-off adjustment. yFinance is more likely correct.</td>
+<td class="wrap">AT&amp;T completed the WarnerMedia/WBD spin-off and merger transaction, effective for trading on 2022-04-11.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.wbd.com/discovery-and-att-close-warnermedia-transaction">https://www.wbd.com/discovery-and-att-close-warnermedia-transaction</a></td>
-<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/1437107/000119312522103051/d328161d8k.htm">https://www.sec.gov/Archives/edgar/data/1437107/000119312522103051/d328161d8k.htm</a></td>
+<td class="url"><a href="https://investors.att.com/stock-information/historical-stock-information/warnermedia-transaction/warnermedia-transaction">https://investors.att.com/stock-information/historical-stock-information/warnermedia-transaction/warnermedia-transaction</a></td>
+<td class="url"><a href="https://www.sec.gov/Archives/edgar/data/732717/000119312522101751/d315217dex991.htm">https://www.sec.gov/Archives/edgar/data/732717/000119312522101751/d315217dex991.htm</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.324</td>
@@ -1248,13 +1248,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>DISTRIBUTION</td>
 <td>0.004318</td>
-<td class="wrap">The input row shows Massive recording cd:0.65 twice while yFinance records one ca:0.65, and the extra Massive event explains the roughly 44 bp return difference. External research confirms TE Connectivity planned a single $0.65 quarterly installment payable December 6, 2024 to holders of record on November 22, 2024, and dividend-history sources list one $0.65 dividend for November 22, 2024. yFinance matches the single supported distribution; Massive appears to have duplicated the event.</td>
-<td class="wrap">TE Connectivity had one $0.65 quarterly cash dividend associated with the November 22, 2024 dividend date.</td>
+<td class="wrap">TE Connectivity dividend-history sources confirm a single $0.65 cash dividend with 2024-11-22 ex-dividend date and 2024-12-06 payment date. The input row math shows yFinance applying a 1.004318 factor, which is consistent with one dividend, while Massive applies 1.008637, approximately double the yFinance adjustment. Massive appears to have an extra or duplicated event adjustment; yFinance is more likely correct.</td>
+<td class="wrap">TE Connectivity $0.65 quarterly cash dividend went ex-dividend on 2024-11-22.</td>
 <td class="wrap">Massive records an extra corporate-action event or excessive event amount.</td>
 <td class="wrap">Massive appears incorrect because it captured an extra same-day corporate-action event or event amount, and the excess event-return piece explains the Massive/yFinance return difference.</td>
 <td class="wrap">Remove the unsupported Massive event amount or duplicate event, then rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.te.com/content/dam/te-com/documents/about-te/our-company/global/annual-report/te-connectivity-proxy-statement-2024.pdf">https://www.te.com/content/dam/te-com/documents/about-te/our-company/global/annual-report/te-connectivity-proxy-statement-2024.pdf</a></td>
-<td class="url"><a href="https://coincodex.com/stock/TEL/dividend/">https://coincodex.com/stock/TEL/dividend/</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/tel/dividend/">https://stockanalysis.com/stocks/tel/dividend/</a></td>
+<td class="url"><a href="https://www.investing.com/equities/te-connectivity-dividends">https://www.investing.com/equities/te-connectivity-dividends</a></td>
 <td>MS_EXTRA_EVENT</td>
 <td>cd:0.65 cd:0.65</td>
 <td>ca:0.65</td>
@@ -1271,13 +1271,13 @@ Important notes:
 <td class="status-MEDIUM">MEDIUM</td>
 <td>PRICING_METHOD</td>
 <td>0.0</td>
-<td class="wrap">The input row shows a close discrepancy: Massive close 406.73 versus yFinance close 412.200012, with no split or distribution. External price evidence identifies ULTA at $412.20 for the May 30, 2023 start price, matching yFinance rather than Massive. I found no same-day corporate action or material company event; the issue is a close/pricing-method discrepancy, and the following row reverses the return-chain impact.</td>
-<td class="wrap">No material company event found; May 30 reflects a vendor close discrepancy, with external pricing supporting the yFinance close near $412.20.</td>
+<td class="wrap">No new same-day Ulta Beauty corporate action or material catalyst was identified for 2023-05-30; the major company-specific event was the prior trading day's earnings/guidance reaction. The input row has no vendor event marker, both explicit dividend/split factors are 1.0, and the -0.013015 return difference reverses almost exactly on 2023-05-31. Historical-price context aligns the two-day path more closely with yFinance, making Massive's 2023-05-30 close the likely stale or inconsistent value. yFinance is more likely correct.</td>
+<td class="wrap">No material Ulta Beauty event identified for May 30, 2023; discrepancy reverses the next day.</td>
 <td class="wrap">Massive close appears incorrect after an adjacent-day close reversal.</td>
 <td class="wrap">Massive appears incorrect because independent evidence supports the comparison source's close, and the return difference reverses across adjacent trading days.</td>
 <td class="wrap">Review and correct the Massive close for the affected date, then rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.schwab.wallst.com/ser/perfMonitor/public/dmFetch.asp?doctag=SERP_C_1108_20240529&amp;feed=7276&amp;pageID=C">https://www.schwab.wallst.com/ser/perfMonitor/public/dmFetch.asp?doctag=SERP_C_1108_20240529&amp;feed=7276&amp;pageID=C</a></td>
 <td class="url"><a href="https://stockanalysis.com/stocks/ulta/history/">https://stockanalysis.com/stocks/ulta/history/</a></td>
+<td class="url"><a href="https://www.ulta.com/investor/news-events/press-releases/detail/168/ulta-beauty-announces-first-quarter-fiscal-2023-results">https://www.ulta.com/investor/news-events/press-releases/detail/168/ulta-beauty-announces-first-quarter-fiscal-2023-results</a></td>
 <td>CLOSE_REVERSAL</td>
 <td></td>
 <td></td>
@@ -1294,13 +1294,13 @@ Important notes:
 <td class="status-MEDIUM">MEDIUM</td>
 <td>PRICING_METHOD</td>
 <td>0.0</td>
-<td class="wrap">Both vendors agree on the May 31 close near $409.83, but returns differ because Massive uses its lower May 30 close while yFinance uses the externally supported $412.20 May 30 close. No split, distribution, or material company news explains the difference. This is the reversal/continuation of the prior-day close discrepancy, with yFinance more likely correct for the return chain.</td>
-<td class="wrap">No material company event found; May 31 return difference follows from the prior-day ULTA close discrepancy.</td>
+<td class="wrap">No new same-day Ulta Beauty corporate action or material catalyst was identified for 2023-05-31, and both explicit vendor factors are 1.0. The row's 0.013371 diff_return offsets the prior day's -0.013015 difference, indicating an adjacent close/adjusted-close pricing reversal rather than a persistent economic disagreement. Because the input row evidence points to Massive's prior-day close as the inconsistent observation, yFinance is more likely correct for the two-day sequence.</td>
+<td class="wrap">No material Ulta Beauty event identified for May 31, 2023; row completes the adjacent-day pricing reversal.</td>
 <td class="wrap">Massive close appears incorrect after an adjacent-day close reversal.</td>
 <td class="wrap">Massive appears incorrect because independent evidence supports the comparison source's close, and the return difference reverses across adjacent trading days.</td>
 <td class="wrap">Review and correct the Massive close for the affected date, then rebuild the adjusted close and adjusted return chain.</td>
-<td class="url"><a href="https://www.schwab.wallst.com/ser/perfMonitor/marketplace/dmFetch.asp?doctag=SERP_C_1056_20230531&amp;feed=7276&amp;pageID=C">https://www.schwab.wallst.com/ser/perfMonitor/marketplace/dmFetch.asp?doctag=SERP_C_1056_20230531&amp;feed=7276&amp;pageID=C</a></td>
-<td class="url"><a href="https://www.schwab.wallst.com/ser/perfMonitor/public/dmFetch.asp?doctag=SERP_C_1108_20240529&amp;feed=7276&amp;pageID=C">https://www.schwab.wallst.com/ser/perfMonitor/public/dmFetch.asp?doctag=SERP_C_1108_20240529&amp;feed=7276&amp;pageID=C</a></td>
+<td class="url"><a href="https://stockanalysis.com/stocks/ulta/history/">https://stockanalysis.com/stocks/ulta/history/</a></td>
+<td class="url"><a href="https://www.ulta.com/investor/news-events/press-releases/detail/168/ulta-beauty-announces-first-quarter-fiscal-2023-results">https://www.ulta.com/investor/news-events/press-releases/detail/168/ulta-beauty-announces-first-quarter-fiscal-2023-results</a></td>
 <td>CLOSE_REVERSAL</td>
 <td></td>
 <td></td>
@@ -1317,13 +1317,13 @@ Important notes:
 <td class="status-HIGH">HIGH</td>
 <td>SPINOFF</td>
 <td>0.03</td>
-<td class="wrap">The input row shows yFinance carrying a spin-off adjustment while Massive has no event, causing a 2.93 percentage point return difference. External research confirms Zimmer Biomet completed the ZimVie spin-off on March 1, 2022, distributing 80.3% of ZimVie to ZBH holders, with holders receiving one ZimVie share for every ten Zimmer Biomet shares held on the February 15, 2022 record date. yFinance reflects the required spin-off adjustment; Massive appears to miss it.</td>
-<td class="wrap">Zimmer Biomet completed the ZimVie spin-off, distributing one ZimVie share for every ten Zimmer Biomet shares.</td>
+<td class="wrap">Zimmer Biomet announced completion of the ZimVie spin-off on 2022-03-01, with ZimVie beginning regular-way Nasdaq trading that day and ZBH holders receiving one ZimVie share for every ten ZBH shares held on the record date. Nasdaq's corporate-action notice independently confirms the ZimVie spin-off distribution. The input row math shows yFinance applying a 1.030 explicit factor while Massive applies 1.0; the large return difference reconciles to Massive missing the spin-off adjustment. yFinance is more likely correct.</td>
+<td class="wrap">Zimmer Biomet completed the ZimVie spin-off, effective on 2022-03-01.</td>
 <td class="wrap">Massive is missing the event/adjustment needed to explain the return difference.</td>
 <td class="wrap">Massive appears incorrect because the comparison source and real-world event evidence support an event/adjustment that Massive did not capture.</td>
 <td class="wrap">Add or correct the missing Massive dividend/split event, apply the appropriate adjustment factor, and rebuild the adjusted close and adjusted return chain.</td>
 <td class="url"><a href="https://investor.zimmerbiomet.com/news-and-events/news/2022/03-01-2022-120035502">https://investor.zimmerbiomet.com/news-and-events/news/2022/03-01-2022-120035502</a></td>
-<td class="url"><a href="https://investor.zimvie.com/shareholder-services/investor-faqs">https://investor.zimvie.com/shareholder-services/investor-faqs</a></td>
+<td class="url"><a href="https://www.nasdaqtrader.com/TraderNews.aspx?id=ECA2022-22">https://www.nasdaqtrader.com/TraderNews.aspx?id=ECA2022-22</a></td>
 <td>MS_MISSING_EVENT</td>
 <td></td>
 <td>sp:1.03</td>
