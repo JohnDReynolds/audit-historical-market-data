@@ -4,26 +4,26 @@
 import polars as pl
 
 # Project imports.
+import audit_schema as schema
+import data_source
 import real_world_events
-from massive_data import MassiveData
 import utilities as util
-from yfinance_data import YFinanceData
 
 
 def require_audit_returns_columns(
-    massive_data: MassiveData,
-    yfinance_data: YFinanceData,
+    source1_data_source: data_source.DataSourceDataset,
+    source2_data_source: data_source.DataSourceDataset,
     real_world_events_path: str,
     has_real_world_events_file: bool,
 ) -> None:
     """Validate all columns required by return-audit calculations.
 
     Args:
-        massive_data:
-            Loaded Massive data wrapper.
+        source1_data_source:
+            Loaded normalized source1 data source.
 
-        yfinance_data:
-            Loaded yFinance data wrapper.
+        source2_data_source:
+            Loaded normalized comparison data source.
 
         real_world_events_path:
             Path to the optional real-world events CSV.
@@ -35,76 +35,48 @@ def require_audit_returns_columns(
         ValueError:
             Raised if any required input columns are missing.
     """
-    required_ohlcv_columns: set[str] = {
-        "ticker",
-        "date",
-        "close",
-    }
-    required_splits_columns: set[str] = {
-        "ticker",
-        "execution_date",
-        "split_from",
-        "split_to",
-    }
-    required_dividends_columns: set[str] = {
-        "ticker",
-        "ex_dividend_date",
-        "cash_amount",
-    }
-    required_yfinance_columns: set[str] = {
-        "ticker",
-        "date",
-        "close",
-        "adjusted_close",
-    }
-    required_yfinance_splits_columns: set[str] = {
-        "ticker",
-        "execution_date",
-        "split_ratio",
-    }
-    required_yfinance_dividends_columns: set[str] = {
-        "ticker",
-        "ex_dividend_date",
-        "cash_amount",
-    }
-
     if has_real_world_events_file:
         real_world_events_raw_lf: pl.LazyFrame = pl.scan_csv(real_world_events_path)
+        real_world_events_required_columns = set(
+            real_world_events.REQUIRED_REAL_WORLD_EVENT_COLUMNS
+        )
 
         util.require_lazy_columns(
             real_world_events_raw_lf,
-            real_world_events.REQUIRED_REAL_WORLD_EVENT_COLUMNS,
+            real_world_events_required_columns,
             "real-world events CSV",
         )
 
-    # Fail early if any input file is missing columns required by the audit.
+    # Fail early if any normalized data-source file is missing columns required
+    # by the generic return audit. Source-specific acquisition modules are
+    # responsible for mapping their native files into this contract.
     util.require_lazy_columns(
-        massive_data.unadjusted_ohlcv,
-        required_ohlcv_columns,
-        "unadjusted prices CSV",
+        source1_data_source.prices,
+        set(schema.DATA_SOURCE_PRICE_COLUMNS),
+        "source1 prices CSV",
     )
     util.require_lazy_columns(
-        massive_data.splits,
-        required_splits_columns,
-        "splits CSV",
+        source1_data_source.splits,
+        set(schema.DATA_SOURCE_SPLIT_COLUMNS),
+        "source1 splits CSV",
     )
     util.require_lazy_columns(
-        massive_data.dividends,
-        required_dividends_columns,
-        "dividends CSV",
+        source1_data_source.dividends,
+        set(schema.DATA_SOURCE_DIVIDEND_COLUMNS),
+        "source1 dividends CSV",
     )
     util.require_lazy_columns(
-        yfinance_data.ohlcv,
-        required_yfinance_columns,
-        "yFinance prices CSV",
+        source2_data_source.prices,
+        set(schema.DATA_SOURCE_PRICE_COLUMNS),
+        "source2 prices CSV",
     )
     util.require_lazy_columns(
-        yfinance_data.splits,
-        required_yfinance_splits_columns,
-        "yFinance splits CSV",
+        source2_data_source.splits,
+        set(schema.DATA_SOURCE_SPLIT_COLUMNS),
+        "source2 splits CSV",
     )
     util.require_lazy_columns(
-        yfinance_data.dividends,
-        required_yfinance_dividends_columns,
-        "yFinance dividends CSV",
+        source2_data_source.dividends,
+        set(schema.DATA_SOURCE_DIVIDEND_COLUMNS),
+        "source2 dividends CSV",
     )

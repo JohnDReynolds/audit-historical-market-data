@@ -1,10 +1,20 @@
-# Massive Market Data Audit
+# Market Data Audit
 
-This project audits Massive.com market data using a combination of data consistency checks, heuristic anomaly detection, and comparison against an independent vendor (currently yFinance).  It focuses on adjusted OHLCV values, dividends, splits, adjusted returns, and real-world event explanations for unusual or discrepant return behavior.
+This project audits one market-data source against another using a combination
+of data consistency checks, heuristic anomaly detection, and comparison against
+an independent source. The current default setup audits Massive.com as source1
+against yFinance as the comarison source2. It focuses on adjusted OHLCV values, dividends,
+splits, adjusted returns, and real-world event explanations for unusual or
+discrepant return behavior.
 
-The code is designed for investment-performance audit workflows where a discrepant value should not merely be flagged, but reconciled: what happened in the real world, which vendor treatment is economically correct, and whether Massive appears to need a data or adjustment-method fix.
+The code is designed for investment-performance audit workflows where a
+discrepant value should not merely be flagged, but reconciled: what happened in
+the real world, which data source treatment is economically correct, and whether
+source1 appears to need a data or adjustment-method fix. In the default setup,
+source1 is Massive.
 
-The optional real-world research workflow is performed by a specialized OpenAI-assisted forensic analyst process.
+The optional real-world research workflow is performed by a specialized
+OpenAI-assisted forensic analyst process.
 
 ## Sample Demo Output
 
@@ -14,7 +24,7 @@ The optional real-world research workflow is performed by a specialized OpenAI-a
 
 ## Functional Overview
 
-At a high level, the project:
+At a high level, the default demo workflow does the following:
 
 1. Downloads or reuses cached Massive data:
    - adjusted daily OHLCV
@@ -27,22 +37,24 @@ At a high level, the project:
    - dividends
    - splits
 
-3. Audits Massive split-adjusted OHLCV:
+3. Optionally audits Massive split-adjusted OHLCV:
    - rebuilds expected Massive split-adjusted OHLCV values
    - compares these expected values to the actual Massive adjusted OHLCV values
+   - keeps this Massive-only source QA separate from the generic source1/source2 return audit
    - emits only mismatched adjusted OHLCV rows
 
 4. Audits adjusted returns:
-   - rebuilds Massive adjusted closes using Massive dividends and splits
-   - calculates Massive adjusted returns
-   - compares Massive returns to yFinance adjusted returns
-   - independently scores unusual Massive return behavior with a `heuristic_anomaly_score`
-   - compares Massive and yFinance corporate-action event markers
+   - rebuilds source1 adjusted closes using source1 dividends and splits
+   - calculates source1 adjusted returns
+   - compares source1 returns to source2 adjusted returns
+   - independently scores unusual source1 return behavior with a `heuristic_anomaly_score`
+   - compares source1 and source2 corporate-action event markers
    - flags material return differences and high-score anomalies
 
 5. Optionally joins researched real-world event conclusions:
    - file path: `inputs/real_world_events.<from_date>.<to_date>.csv`
-   - identifies the event bucket, expected return impact, likely correct source, research confidence, URLs, and evidence summary
+   - identifies the event bucket, expected return impact, likely correct source,
+     research confidence, URLs, and evidence summary
    - updates audit diagnostics so researched conclusions can override pre-research assumptions
 
 6. Writes audit outputs:
@@ -51,15 +63,24 @@ At a high level, the project:
    - actionable and non-actionable CSV/HTML/PDF reports
    - data dictionary PDF
 
+For custom audits, callers can bypass the default Massive/yFinance adapters and
+provide prepared normalized source1/source2 CSVs directly.
+
 ## Architectural Overview
 
-The project is organized around a small orchestration class, `Audit`, plus focused modules for data access, return construction, classification, event enrichment, and output formatting.
+The project is organized around a small orchestration class, `Audit`, plus
+focused modules for data access, return construction, classification, event
+enrichment, and output formatting.
 
 ### Main Entry Point
 
 `audit.py`
 
-Contains the `Audit` class. Instantiating `Audit(...)` loads data, runs the adjusted-OHLCV audit, runs the adjusted-return audit, joins optional real-world event research, and writes the full adjusted-OHLCV and return audit CSV outputs. Actionable/non-actionable reports and the data dictionary are written by explicit report methods.
+Contains the `Audit` class. Instantiating `Audit(...)` loads data, runs the
+adjusted-OHLCV audit, runs the adjusted-return audit, joins optional real-world
+event research, and writes the full adjusted-OHLCV and return audit CSV outputs.
+Actionable/non-actionable reports and the data dictionary are written by
+explicit report methods.
 
 Typical use:
 
@@ -92,19 +113,32 @@ audit.pdf_audit_report(
 
 `massive_data.py`
 
-Downloads or reuses cached Massive data, then exposes date-ranged CSV cache files under `inputs/`. `MASSIVE_API_KEY` is loaded from `.env` only when a download is needed.
+Downloads or reuses cached Massive data, then writes the default source1
+normalized CSV files under `inputs/`. `MASSIVE_API_KEY` is loaded from `.env`
+only when a download is needed.
 
 `yfinance_data.py`
 
-Downloads yFinance price, dividend, and split data and writes date-ranged CSV cache files under `inputs/`.
+Downloads yFinance price, dividend, and split data, then writes the default
+source2 normalized CSV files under `inputs/`.
 
-Both data wrappers expose Polars `LazyFrame` objects for downstream processing.
+Both adapters expose Polars `LazyFrame` objects for downstream processing.
+
+`data_source.py`
+
+Defines the normalized source1/source2 contract and loads any pair of prepared
+source CSVs. The default configs point source1 at Massive-backed files and
+source2 at yFinance-backed files, but the return audit consumes only the
+normalized contract.
 
 ### Adjusted OHLCV Audit
 
 `adjusted_ohlcv_audit.py`
 
-Independently rebuilds split-adjusted OHLCV values from Massive unadjusted OHLCV and Massive split records. It compares those expected values to Massive adjusted OHLCV and returns mismatches only.
+Independently rebuilds split-adjusted OHLCV values from Massive unadjusted OHLCV
+and Massive split records. It compares those expected values to Massive adjusted
+OHLCV and returns mismatches only. This is intentionally a Massive adapter QA
+check, not part of the generic source1/source2 return audit.
 
 ### Return Audit Pipeline
 
@@ -112,45 +146,53 @@ Independently rebuilds split-adjusted OHLCV values from Massive unadjusted OHLCV
 
 Builds reusable Polars LazyFrames for:
 
-- Massive close prices
+- source1 close prices
 - cumulative split/dividend adjustment factors
-- Massive explicit dividend/split adjustment factors
-- yFinance explicit dividend/split adjustment factors
-- Massive adjusted closes and return components
-- compact event-marker strings such as `cd:<amount>`, `sc:<amount>`, `ca:<amount>`, and `sp:<factor>`
+- source1 explicit dividend/split adjustment factors
+- source2 explicit dividend/split adjustment factors
+- source1 adjusted closes and return components
+- compact event-marker strings such as `cd:<amount>`, `sc:<amount>`,
+  `ca:<amount>`, and `sp:<factor>`
 
 `returns_audit_pipeline.py`
 
 Combines the builder outputs into the full return-audit frame. It calculates:
 
-- Massive adjusted close and return
-- yFinance adjusted return
+- source1 adjusted close and return
+- source2 adjusted return
 - return differences
 - adjusted-close-implied dividend/split factors versus explicit dividend/split factors
 - adjustment-factor diagnostics
 - close-reversal diagnostics
-- `heuristic_anomaly_score`, an independent Massive-side signal that can flag unusual Massive returns even when yFinance returns are identical or unavailable
+- `heuristic_anomaly_score`, an independent source1-side signal that can flag
+  unusual source1 returns even when source2 returns are identical or unavailable
 - deterministic pre-research reason codes
 
 ### Classification and Review Logic
 
 `audit_classification.py`
 
-Assigns review flags, priorities, analysis labels, and Massive remediation guidance.
+Assigns review flags, priorities, analysis labels, and source1 remediation guidance.
 
 Current report split:
 
-- actionable report: rows requiring review where `massive_needs_fix == true`
-- non-actionable report: rows for review where `massive_needs_fix == false`
+- actionable report: rows requiring review where `source1_needs_fix == true`
+- non-actionable report: rows for review where `source1_needs_fix == false`
 
 Rows require review when:
 
 - `diff_return` is non-null, or
 - `heuristic_anomaly_score >= MIN_SCORE_TO_REVIEW`
 
-The heuristic score is intentionally not just a yFinance comparison. It is calculated from Massive return behavior, including the size of the Massive adjusted return, rolling behavior, robust z-scores, raw close ratios, and adjacent-day reversals. This lets the audit surface suspicious Massive return patterns even when the Massive/yFinance return comparison itself does not trigger review.
+The heuristic score is intentionally not just a source2 comparison. It is calculated
+from source1 return behavior, including the size of the source1 adjusted return,
+rolling behavior, robust z-scores, raw close ratios, and adjacent-day reversals. This lets the
+audit surface suspicious source1 return patterns even when the source1/source2 return
+comparison itself does not trigger review.
 
-Real-world research can make these diagnostics research-aware. For example, if external research concludes `likely_correct_source == MASSIVE` or `BOTH`, Massive remediation fields are cleared.
+Real-world research can make these diagnostics research-aware. For example, if external
+research concludes `likely_correct_source == SOURCE1` or `BOTH`, source1
+remediation fields are cleared.
 
 ### Real-World Event Enrichment
 
@@ -167,16 +209,20 @@ inputs/real_world_events.<from_date>.<to_date>.csv
 Required columns:
 
 ```text
-ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,research_confidence,primary_source_url,secondary_source_url,evidence_summary,real_world_event
+ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,research_confidence,primary_url,secondary_url,evidence_summary,real_world_event
 ```
 
-This module also applies reason-code overrides when external event research supports Massive, yFinance, both, or neither. Split and spin-off research values are normalized into the audit's incremental return-impact convention before reconciliation.
+This module also applies reason-code overrides when external event research
+supports source1, source2, both, or neither. Split and spin-off research values
+are normalized into the audit's incremental return-impact convention before
+reconciliation.
 
 ### Output Generation
 
 `audit_outputs.py`
 
-Selects compact report columns, writes the full audited returns CSV, and writes review batches for external forensic research.
+Selects compact report columns, writes the full audited returns CSV, and writes
+review batches for external forensic research.
 
 `audit.py`
 
@@ -184,7 +230,9 @@ Also contains CSV, HTML, and PDF report rendering methods. PDF generation uses P
 
 `audit_schema.py`
 
-Centralizes constants, column lists, report columns, path prefixes, tolerances, event buckets, and the data dictionary used in report tooltips and the data dictionary PDF.
+Centralizes constants, column lists, report columns, path prefixes, tolerances,
+event buckets, and the data dictionary used in report tooltips and the data
+dictionary PDF.
 
 ## Inputs
 
@@ -206,6 +254,22 @@ inputs/yfinance_dividends.2021-05-16.2026-05-16.csv
 inputs/yfinance_splits.2021-05-16.2026-05-16.csv
 ```
 
+The generic return audit consumes normalized source1/source2 files. The default
+Massive and yFinance adapters write these files automatically:
+
+```text
+inputs/source1_prices.<from_date>.<to_date>.csv
+inputs/source1_dividends.<from_date>.<to_date>.csv
+inputs/source1_splits.<from_date>.<to_date>.csv
+inputs/source2_prices.<from_date>.<to_date>.csv
+inputs/source2_dividends.<from_date>.<to_date>.csv
+inputs/source2_splits.<from_date>.<to_date>.csv
+```
+
+Prepared custom data sources should match the normalized column contracts
+defined by `DATA_SOURCE_PRICE_COLUMNS`, `DATA_SOURCE_DIVIDEND_COLUMNS`, and
+`DATA_SOURCE_SPLIT_COLUMNS` in `audit_schema.py`.
+
 Optional researched event file:
 
 ```text
@@ -214,12 +278,12 @@ inputs/real_world_events.2021-05-16.2026-05-16.csv
 
 ## Outputs
 
-Primary outputs are written to `outputs/`.
+Audit outputs are written to `outputs/`.
 
 Examples:
 
 ```text
-outputs/audited_adjusted_ohlcv.<from_date>.<to_date>.csv
+outputs/audited_split_adjusted_ohlcv.<from_date>.<to_date>.csv
 outputs/audited_returns.<from_date>.<to_date>.csv
 outputs/1_audited_returns.<from_date>.<to_date>.csv
 outputs/2_audited_returns.<from_date>.<to_date>.csv
@@ -232,11 +296,18 @@ outputs/non_actionable.<from_date>.<to_date>.pdf
 outputs/data_dictionary.pdf
 ```
 
-The numbered `*_audited_returns...csv` files are research batches for the AI-assisted forensic analyst workflow. They preserve ticker groupings and contain rows that need review, plus surrounding same-ticker context.
+The numbered `*_audited_returns...csv` files are research batches for the
+AI-assisted forensic analyst workflow. They preserve ticker groupings and contain
+rows that need review, plus surrounding same-ticker context.
 
 ## External Research Workflow
 
-The external research step is designed to be automated after a single manual prompt. The user starts the OpenAI-assisted forensic analyst process once, outside this Python process, using the project instructions below; from there, the analyst process automatically researches the generated batches, writes researched batch CSVs, and assembles the real-world-event input file for the next audit run.
+The external research step is designed to run after a single manual prompt. The
+user starts the OpenAI-assisted forensic analyst process once, outside this
+Python process, using the project instructions below. The Python helper
+`forensic_research_batches.py` controls batch order, validates each researched
+batch CSV, and assembles the real-world-event input file after all batches pass.
+The analyst process supplies the researched content for each batch.
 
 The project includes two prompt/instruction files for that process:
 
@@ -249,10 +320,12 @@ The workflow is:
 2. Prompt the OpenAI-assisted forensic analyst once with the implementation and instruction files.
 3. Let the analyst process research each batch independently.
 4. Let the analyst process write a corresponding `.researched` CSV for each batch.
-5. Let the analyst process concatenate researched batch files into `inputs/real_world_events.<from_date>.<to_date>.csv`.
+5. Let the analyst process concatenate researched batch files into
+   `inputs/real_world_events.<from_date>.<to_date>.csv`.
 6. Rerun the audit so researched conclusions are joined into the final reports.
 
-The instructions intentionally require sequential, independent batch processing so conclusions from one batch do not contaminate another.
+The instructions intentionally require sequential, independent batch processing
+so conclusions from one batch do not contaminate another.
 
 ## Running the Project
 
@@ -278,7 +351,8 @@ Massive access requires:
 MASSIVE_API_KEY=<your key>
 ```
 
-The code loads this from `.env`. The key is required only when the run needs to download Massive data; cached input CSVs can be reused without a Massive API key.
+The code loads this from `.env`. The key is required only when the run needs to
+download Massive data; cached input CSVs can be reused without a Massive API key.
 
 ## Dependencies
 
@@ -302,25 +376,30 @@ PDF generation also requires Playwright's Chromium browser:
 python -m playwright install chromium
 ```
 
-## Notes on Vendor Semantics
+## Notes on Data Source Semantics
 
-The audit uses two vendor identities:
+The audit uses two data source roles:
 
-- Massive: fields prefixed `ms_` or `massive_`
-- yFinance: fields prefixed `yf_`
+- source1 = audited data source; fields prefixed `source1_`
+- source2 = comparison data source; fields prefixed `source2_`
+
+The audit is asymmetric. source1 is the data source being evaluated for
+possible fixes. source2 is the comparison data source used to help detect,
+quantify, and explain differences.
 
 `diff_return` follows this sign convention:
 
 ```text
-diff_return = ms_return - yf_return
+diff_return = source1_return - source2_return
 ```
 
 So:
 
-- positive `diff_return` means Massive return is higher
-- negative `diff_return` means Massive return is lower
+- positive `diff_return` means the source1 return is higher
+- negative `diff_return` means the source1 return is lower
 
-`expected_return_impact` is an incremental return impact, not a total event factor. For a split example:
+`expected_return_impact` is an incremental return impact, not a total event
+factor. For a split example:
 
 ```text
 sp:1.048 -> expected_return_impact = 0.048
@@ -328,9 +407,13 @@ sp:1.048 -> expected_return_impact = 0.048
 
 ## Repository Hygiene
 
-Downloaded input CSVs and generated outputs can be large and date-specific. Treat them as reproducible artifacts unless you intentionally want to preserve a specific audit run.
+Downloaded input CSVs and generated outputs can be large and date-specific.
+Treat them as reproducible artifacts unless you intentionally want to preserve a
+specific audit run.
 
-The source CSV cache behavior is controlled by the `always_download` flag passed to `Audit`.
+For the default Massive/yFinance adapters, source CSV cache behavior is controlled
+by the `always_download` flag passed to `Audit`. Prepared custom source1/source2
+files are loaded from the paths supplied in their data-source configs.
 
 ## License
 

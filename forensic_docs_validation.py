@@ -19,8 +19,8 @@ _EVENT_DETECTED_VALUES = [
 ]
 
 _LIKELY_CORRECT_SOURCE_VALUES = [
-    "MASSIVE",
-    "YFINANCE",
+    "SOURCE1",
+    "SOURCE2",
     "BOTH",
     "NEITHER",
     "UNCERTAIN",
@@ -34,7 +34,13 @@ _RESEARCH_CONFIDENCE_VALUES = [
 
 
 def validate_forensic_docs() -> None:
-    """Fail if forensic analyst docs drift from code-level schema assumptions."""
+    """Fail if forensic analyst docs drift from code-level schema assumptions.
+
+    Raises:
+        AssertionError:
+            Raised if either analyst instruction file no longer matches the
+            code-level schema or workflow contract.
+    """
     instructions_text = FORENSIC_ANALYST_INSTRUCTIONS_PATH.read_text(encoding="utf-8")
     implementation_text = FORENSIC_ANALYST_IMPLEMENTATION_PATH.read_text(encoding="utf-8")
 
@@ -65,7 +71,16 @@ def validate_forensic_docs() -> None:
 
 
 def _assert_forensic_output_schema(instructions_text: str) -> None:
-    """Validate the exact CSV header required from the forensic analyst."""
+    """Validate the exact CSV header required from the forensic analyst.
+
+    Args:
+        instructions_text:
+            Contents of ``forensic_ai_analyst_instructions.txt``.
+
+    Raises:
+        AssertionError:
+            Raised if the documented output header differs from the code schema.
+    """
     expected_header = ",".join(schema.FORENSIC_ANALYST_OUTPUT_COLUMNS)
 
     if expected_header not in instructions_text:
@@ -80,9 +95,24 @@ def _assert_column_rule_values(
     column_name: str,
     expected_values: list[str],
 ) -> None:
-    """Validate allowed values listed under one COLUMN RULES heading."""
+    """Validate allowed values listed under one COLUMN RULES heading.
+
+    Args:
+        instructions_text:
+            Contents of ``forensic_ai_analyst_instructions.txt``.
+
+        column_name:
+            Column whose documented rule block should be checked.
+
+        expected_values:
+            Exact allowed values expected in the documented rule block.
+
+    Raises:
+        AssertionError:
+            Raised if the rule block is missing or has different values.
+    """
     match = re.search(
-        rf"^{re.escape(column_name)}:\n(?P<body>(?:[A-Z_]+\n)+)",
+        rf"^{re.escape(column_name)}:\n(?P<body>(?:[A-Z0-9_]+\n)+)",
         instructions_text,
         re.MULTILINE,
     )
@@ -102,7 +132,16 @@ def _assert_column_rule_values(
 
 
 def _assert_reason_codes_documented(instructions_text: str) -> None:
-    """Validate that data-dictionary reason codes appear in the analyst instructions."""
+    """Validate that data-dictionary reason codes appear in the analyst instructions.
+
+    Args:
+        instructions_text:
+            Contents of ``forensic_ai_analyst_instructions.txt``.
+
+    Raises:
+        AssertionError:
+            Raised if any reason code is missing from the instructions.
+    """
     missing_reason_codes = [
         reason_code for reason_code in schema.REASON_CODES if reason_code not in instructions_text
     ]
@@ -119,7 +158,15 @@ def _assert_pricing_method_convention_documented(instructions_text: str) -> None
 
     The batch validator intentionally avoids broad semantic policy checks, but
     the analyst instructions need to preserve the small downstream convention
-    that pricing-method rows use when a close-reversal review prefers one vendor.
+    that pricing-method rows use when a close-reversal review prefers one data source.
+
+    Args:
+        instructions_text:
+            Contents of ``forensic_ai_analyst_instructions.txt``.
+
+    Raises:
+        AssertionError:
+            Raised if the close-reversal pricing-method convention is missing.
     """
     required_phrases = [
         "PRICING_METHOD close-reversal rows",
@@ -137,7 +184,17 @@ def _assert_pricing_method_convention_documented(instructions_text: str) -> None
 
 
 def _assert_implementation_contract(implementation_text: str) -> None:
-    """Validate core batch workflow phrases that code and docs assume."""
+    """Validate core batch workflow phrases that code and docs assume.
+
+    Args:
+        implementation_text:
+            Contents of ``forensic_ai_analyst_implementation.txt``.
+
+    Raises:
+        AssertionError:
+            Raised if the batch helper is missing or required workflow phrases
+            are absent.
+    """
     if not FORENSIC_RESEARCH_BATCHES_PATH.exists():
         raise AssertionError(f"Missing required batch helper: {FORENSIC_RESEARCH_BATCHES_PATH}")
 

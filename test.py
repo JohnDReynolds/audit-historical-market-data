@@ -8,6 +8,7 @@ import subprocess
 
 # Project imports
 from audit import Audit
+import data_source
 import forensic_docs_validation
 import utilities as util
 
@@ -20,9 +21,9 @@ _TO_DATE = "2026-05-16"
 # output for human review.
 _NON_DETERMINISTIC_COLUMNS = (
     "evidence summary",
-    "primary source url",
+    "primary url",
     "real world event",
-    "secondary source url",
+    "secondary url",
 )
 
 
@@ -39,6 +40,9 @@ def _main() -> None:
         to_date=_TO_DATE,
         always_download=False,
     )
+
+    # Fail if normalized data-source files drift from the generic source contract.
+    data_source.load_default_data_sources(_FROM_DATE, _TO_DATE)
 
     # Print ohlcv audit results.  Squeaky clean, probably always empty.
     if audit.audited_adjusted_ohlcv.is_empty():

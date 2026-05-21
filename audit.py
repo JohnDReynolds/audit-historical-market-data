@@ -1,4 +1,4 @@
-"""Audit Massive adjusted OHLCV values, dividends, splits, and returns."""
+"""Audit normalized source1/source2 market data and default adapter outputs."""
 
 # Errors to ignore.
 # pylint: disable=import-outside-toplevel
@@ -19,6 +19,7 @@ import audit_classification
 import audit_outputs
 import audit_schema as schema
 import audit_validation
+import data_source
 import real_world_events
 import returns_audit_pipeline
 from massive_data import MassiveData
@@ -27,14 +28,18 @@ from yfinance_data import YFinanceData
 
 
 class Audit:
-    """Audit Massive prices, corporate actions, and calculated returns.
+    """Audit source1 prices, corporate actions, and calculated returns.
 
-    This class loads Massive and yFinance market data, then produces audit
-    outputs for:
+    By default, this class runs the Massive source1 adapter and yFinance
+    source2 adapter, then audits the normalized source files they write. Custom
+    source configs can be supplied to audit any two already-normalized data
+    sources without changing the return engine.
 
-    - Massive adjusted OHLCV values.
+    Outputs include:
+
+    - Optional Massive split-adjusted OHLCV source QA, for the default adapter.
     - Split/dividend-adjusted return calculations.
-    - Differences between Massive-derived returns and yFinance returns.
+    - Differences between source1-derived returns and source2 returns.
 
     Attributes:
         from_date:
@@ -44,13 +49,20 @@ class Audit:
             Inclusive audit end date in ``YYYY-MM-DD`` format.
 
         massive_data:
-            Loaded Massive data wrapper.
+            Loaded Massive data wrapper when default adapters are used.
 
         yfinance_data:
-            Loaded yFinance data wrapper.
+            Loaded yFinance data wrapper when default adapters are used.
+
+        source1_data_source:
+            Loaded normalized source1 dataset.
+
+        source2_data_source:
+            Loaded normalized source2 dataset.
 
         audited_adjusted_ohlcv:
-            DataFrame containing adjusted OHLCV audit differences.
+            DataFrame containing Massive split-adjusted OHLCV source QA
+            differences.
 
         audited_returns:
             DataFrame containing adjusted return audit output.
@@ -62,6 +74,10 @@ class Audit:
         from_date: str,
         to_date: str,
         always_download: bool = False,
+        source1_config: data_source.DataSourceConfig | None = None,
+        source2_config: data_source.DataSourceConfig | None = None,
+        run_default_adapters: bool = True,
+        run_massive_split_adjusted_ohlcv_audit: bool = True,
     ) -> None:
         """Initialize Audit and run audit calculations.
 
@@ -77,23 +93,57 @@ class Audit:
 
             always_download:
                 Whether to force source data re-download before auditing.
+
+            source1_config:
+                Optional source1 config. If omitted, the Massive-backed default
+                source1 config for ``from_date``/``to_date`` is used.
+
+            source2_config:
+                Optional source2 config. If omitted, the yFinance-backed
+                default source2 config for ``from_date``/``to_date`` is used.
+
+            run_default_adapters:
+                Whether to run the default Massive/yFinance acquisition
+                adapters before loading normalized source files. Set this false
+                when custom source configs already point to prepared CSVs.
+
+            run_massive_split_adjusted_ohlcv_audit:
+                Whether to run the Massive-only split-adjusted OHLCV QA check.
+                This applies only when default adapters are used.
         """
         self.from_date = from_date
         self.to_date = to_date
 
-        self.massive_data = MassiveData(
-            tickers,
-            self.from_date,
-            self.to_date,
-            always_download,
-        )
-        self.yfinance_data = YFinanceData(
-            tickers,
-            self.from_date,
-            self.to_date,
-            always_download,
-        )
+        self.massive_data: MassiveData | None = None
+        self.yfinance_data: YFinanceData | None = None
+        self.run_massive_split_adjusted_ohlcv_audit = run_massive_split_adjusted_ohlcv_audit
 
+        if run_default_adapters:
+            self.massive_data = MassiveData(
+                tickers,
+                self.from_date,
+                self.to_date,
+                always_download,
+            )
+            self.yfinance_data = YFinanceData(
+                tickers,
+                self.from_date,
+                self.to_date,
+                always_download,
+            )
+
+        self.source1_config = source1_config or data_source.default_source1_config(
+            self.from_date,
+            self.to_date,
+        )
+        self.source2_config = source2_config or data_source.default_source2_config(
+            self.from_date,
+            self.to_date,
+        )
+        self.source1_data_source, self.source2_data_source = data_source.load_data_sources(
+            self.source1_config,
+            self.source2_config,
+        )
         self.audited_adjusted_ohlcv = self.audit_adjusted_ohlcv()
         self.audited_returns = self.audit_returns()
 
@@ -102,7 +152,7 @@ class Audit:
 
         Args:
             actionable:
-                Whether to return actionable Massive data problems.
+                Whether to return actionable source1 data problems.
 
         Returns:
             DataFrame with display column names applied.
@@ -115,10 +165,11 @@ class Audit:
         return df.rename(self._display_column_names(df.columns))
 
     def audit_adjusted_ohlcv(self) -> pl.DataFrame:
-        """Audit Massive split-adjusted OHLCV values.
+        """Audit Massive split-adjusted OHLCV endpoint consistency when available.
 
-        This method preserves the original public ``Audit`` API while delegating
-        the adjusted-OHLCV implementation to ``adjusted_ohlcv_audit``.
+        This method is a Massive-only source QA check. Massive adjusted prices
+        are split-adjusted only, so this is intentionally separate from the
+        main generic data-source audit.
 
         Returns:
             DataFrame containing only mismatched OHLCV values.
@@ -127,7 +178,10 @@ class Audit:
             ValueError:
                 Raised if any required input columns are missing.
         """
-        return adjusted_ohlcv_audit.audit_adjusted_ohlcv(
+        if self.massive_data is None or not self.run_massive_split_adjusted_ohlcv_audit:
+            return pl.DataFrame()
+
+        return adjusted_ohlcv_audit.audit_massive_split_adjusted_ohlcv(
             self.massive_data,
             self.from_date,
             self.to_date,
@@ -136,20 +190,21 @@ class Audit:
     def audit_returns(self) -> pl.DataFrame:
         """Create split/dividend-adjusted closes and returns.
 
-        This method loads:
+        This method loads normalized source1/source2 data-source files:
 
-        1. Unadjusted Massive OHLCV data.
-        2. Massive split events.
-        3. Massive dividend events.
-        4. yFinance OHLCV data.
+        1. source1 OHLCV data.
+        2. source1 split and dividend events.
+        3. source2 OHLCV data.
+        4. source2 split and dividend events.
 
-        It creates a backward-adjusted close series using both splits and
-        dividends, compares the locally calculated adjusted returns against
-        yFinance adjusted returns, and assigns a heuristic anomaly score.
+        It creates a backward-adjusted source1 close series using both splits
+        and dividends, compares the locally calculated adjusted returns against
+        source2 adjusted returns, and assigns a heuristic anomaly score.
 
         Returns:
-            DataFrame with adjusted closes, adjusted returns, yFinance
-            comparison columns, event comparison columns, and heuristic anomaly scores.
+            DataFrame with adjusted closes, adjusted returns, source
+            comparison columns, event comparison columns, and heuristic anomaly
+            scores.
 
         Raises:
             ValueError:
@@ -162,15 +217,15 @@ class Audit:
         has_real_world_events_file: bool = Path(real_world_events_path).exists()
 
         audit_validation.require_audit_returns_columns(
-            self.massive_data,
-            self.yfinance_data,
+            self.source1_data_source,
+            self.source2_data_source,
             real_world_events_path,
             has_real_world_events_file,
         )
 
         returns_lf: pl.LazyFrame = returns_audit_pipeline.build_returns_audit_lf(
-            self.massive_data,
-            self.yfinance_data,
+            self.source1_data_source,
+            self.source2_data_source,
         )
         df: pl.DataFrame = audit_outputs.collect_returns_output(returns_lf)
 
@@ -204,7 +259,7 @@ class Audit:
 
         Args:
             actionable:
-                Whether to report actionable Massive data problems.
+                Whether to report actionable source1 data problems.
 
             output_path:
                 Optional path where the CSV audit report should be written.
@@ -257,7 +312,7 @@ class Audit:
 
         Args:
             actionable:
-                Whether to report actionable Massive data problems.
+                Whether to report actionable source1 data problems.
 
             summary:
                 Whether to omit detail columns and append ``Summary`` to the
@@ -301,19 +356,19 @@ class Audit:
                     return_dtype=pl.String,
                 )
 
-            massive_problem_and_fix_column = "massive_problem_and_fix"
-            massive_guidance_columns = [
-                "massive_problem_summary",
-                "massive_why_incorrect",
-                "massive_fix_action",
+            source1_problem_and_fix_column = "source1_problem_and_fix"
+            source1_guidance_columns = [
+                "source1_problem_summary",
+                "source1_why_incorrect",
+                "source1_fix_action",
             ]
-            has_massive_problem_and_fix = all(
-                column_name in raw_df.columns for column_name in massive_guidance_columns
+            has_source1_problem_and_fix = all(
+                column_name in raw_df.columns for column_name in source1_guidance_columns
             )
-            if has_massive_problem_and_fix:
+            if has_source1_problem_and_fix:
                 raw_df = raw_df.with_columns(
-                    joined_text_expr(massive_guidance_columns).alias(
-                        massive_problem_and_fix_column
+                    joined_text_expr(source1_guidance_columns).alias(
+                        source1_problem_and_fix_column
                     )
                 )
 
@@ -341,11 +396,11 @@ class Audit:
                     kept_columns.append("analysis_reason_code")
                 if column_name == "evidence_summary" and has_real_world_evidence:
                     kept_columns.append(real_world_evidence_column)
-                if column_name == "massive_problem_summary":
-                    if has_massive_problem_and_fix:
-                        kept_columns.append(massive_problem_and_fix_column)
+                if column_name == "source1_problem_summary":
+                    if has_source1_problem_and_fix:
+                        kept_columns.append(source1_problem_and_fix_column)
                 if column_name not in summary_omitted_columns | {
-                    massive_problem_and_fix_column,
+                    source1_problem_and_fix_column,
                     real_world_evidence_column,
                 }:
                     kept_columns.append(column_name)
@@ -459,18 +514,18 @@ class Audit:
                 return "pdf-col-date"
             if fieldname in {"evidence summary", "real world evidence"}:
                 return "pdf-col-evidence-summary"
-            if fieldname == "massive problem and fix":
+            if fieldname == "source1 problem and fix":
                 return "pdf-col-problem-fix"
             if fieldname == "real world event":
                 return "pdf-col-event"
-            if fieldname == "massive fix priority":
+            if fieldname == "source1 fix priority":
                 return "pdf-col-fix-priority"
             if fieldname == "event bucket":
                 return "pdf-col-event-bucket"
             if fieldname in {
-                "massive problem summary",
-                "massive why incorrect",
-                "massive fix action",
+                "source1 problem summary",
+                "source1 why incorrect",
+                "source1 fix action",
             }:
                 return "pdf-col-guidance"
             if fieldname in url_columns:
@@ -482,12 +537,12 @@ class Audit:
             }:
                 return "pdf-col-impact"
             if fieldname in {
-                "Massive ms_return",
-                "yFinance yf_return",
+                "source1 return",
+                "source2 return",
             }:
                 return "pdf-col-summary-return"
             if fieldname == "analysis reason code":
-                return "pdf-col-event"
+                return "pdf-col-analysis-reason"
             if normalized_fieldname.endswith("div_split"):
                 return "pdf-col-marker"
             if "return" in normalized_fieldname or fieldname == "heuristic anomaly score":
@@ -518,6 +573,10 @@ class Audit:
             title = f"{'' if actionable else 'Non-'}Actionable Audit Report"
             if summary:
                 title = f"{title} Summary"
+            source_lines = [
+                f"Audited source1: {self.source1_config.name}",
+                f"Comparison source2: {self.source2_config.name}",
+            ]
             html_parts: list[str] = [
                 "<!doctype html>",
                 '<html lang="en">',
@@ -527,9 +586,11 @@ class Audit:
                 "<style>",
                 "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
                 "margin:24px;color:#1f2937;background:#f8fafc}",
-                ".title{display:flex;align-items:baseline;gap:10px;margin:0 0 16px}",
+                ".report-heading{margin:0 0 16px}",
+                ".title{display:flex;align-items:baseline;gap:10px;margin:0}",
                 ".title-main{font-size:22px;font-weight:700;color:#1e3a8a}",
                 ".title-path{font-size:13px;color:#64748b}",
+                ".source-context{margin-top:4px;font-size:17.5px;line-height:1.3;color:#1e3a8a}",
                 ".table-wrap{max-height:calc(100vh - 96px);overflow:auto;"
                 "border:1px solid #cbd5e1;background:white}",
                 "table{border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.35}",
@@ -557,9 +618,14 @@ class Audit:
                 "</style>",
                 "</head>",
                 "<body>",
+                '<div class="report-heading">',
                 '<h1 class="title">',
                 f'<span class="title-main">{title}</span>',
                 "</h1>",
+                '<div class="source-context">',
+                "<br>".join(escape(line) for line in source_lines),
+                "</div>",
+                "</div>",
                 '<div class="table-wrap">',
                 "<table>",
                 "<colgroup>",
@@ -633,7 +699,7 @@ class Audit:
                 Path where the PDF audit report should be written.
 
             actionable:
-                Whether to report actionable Massive data problems.
+                Whether to report actionable source1 data problems.
 
             summary:
                 Whether to omit detail columns and increase the PDF font size.
@@ -662,32 +728,35 @@ class Audit:
 
         pdf_font_size = "14px" if summary else "6.5px"
         pdf_title_font_size = "28px" if summary else "13px"
+        pdf_source_context_font_size = "21px" if summary else "10.75px"
         pdf_line_height = "1.22" if summary else "1.18"
         if summary:
-            pdf_ticker_width = "0.66in"
-            pdf_date_width = "1.05in"
-            pdf_fix_priority_width = "0.855in"
-            pdf_event_bucket_width = "1.195425in"
+            pdf_ticker_width = "0.610139in"
+            pdf_date_width = "0.873608in"
+            pdf_fix_priority_width = "0.790397in"
+            pdf_event_bucket_width = "1.193525in"
+            pdf_analysis_reason_width = "2.394800in"
             pdf_impact_width = "0.77in"
             pdf_summary_return_width = "0.847in"
-            pdf_evidence_width = "3.67792285in"
-            pdf_problem_fix_width = "2.53765215in"
+            pdf_evidence_width = "3.32308264in"
+            pdf_problem_fix_width = "2.12904126in"
             pdf_event_width = "2.355in"
             pdf_guidance_width = "1.25in"
-            pdf_marker_width = "1.155in"
+            pdf_marker_width = "1.6632in"
             pdf_url_width = "0.95in"
         else:
-            pdf_ticker_width = "0.36in"
-            pdf_date_width = "0.5in"
-            pdf_fix_priority_width = "0.45in"
-            pdf_event_bucket_width = "0.621in"
+            pdf_ticker_width = "0.329363in"
+            pdf_date_width = "0.411703in"
+            pdf_fix_priority_width = "0.411704in"
+            pdf_event_bucket_width = "0.613598in"
+            pdf_analysis_reason_width = "0.918423in"
             pdf_impact_width = "0.44in"
             pdf_summary_return_width = "0.44in"
-            pdf_evidence_width = "2.5in"
-            pdf_problem_fix_width = "2.5in"
+            pdf_evidence_width = "2.07471998in"
+            pdf_problem_fix_width = "2.55168012in"
             pdf_event_width = "0.9126in"
             pdf_guidance_width = "1.2638in"
-            pdf_marker_width = "0.605in"
+            pdf_marker_width = "0.8712in"
             pdf_url_width = "1.05in"
 
         print_css = (
@@ -700,11 +769,19 @@ class Audit:
                         background: white;
                         color: #111827;
                     }
-                    .title {
+                    .report-heading {
                         margin: 0 0 8px;
+                    }
+                    .title {
+                        margin: 0;
                     }
                     .title-main {
                         font-size: __PDF_TITLE_FONT_SIZE__;
+                    }
+                    .source-context {
+                        margin-top: 2px;
+                        font-size: __PDF_SOURCE_CONTEXT_FONT_SIZE__;
+                        line-height: 1.2;
                     }
                     .table-wrap {
                         max-height: none;
@@ -727,6 +804,7 @@ class Audit:
                     .pdf-col-evidence-summary { width: __PDF_EVIDENCE_WIDTH__; }
                     .pdf-col-problem-fix { width: __PDF_PROBLEM_FIX_WIDTH__; }
                     .pdf-col-event { width: __PDF_EVENT_WIDTH__; }
+                    .pdf-col-analysis-reason { width: __PDF_ANALYSIS_REASON_WIDTH__; }
                     .pdf-col-guidance { width: __PDF_GUIDANCE_WIDTH__; }
                     .pdf-col-url { width: __PDF_URL_WIDTH__; }
                     .pdf-col-reason { width: 0.65in; }
@@ -782,6 +860,10 @@ class Audit:
                 pdf_title_font_size,
             )
             .replace(
+                "__PDF_SOURCE_CONTEXT_FONT_SIZE__",
+                pdf_source_context_font_size,
+            )
+            .replace(
                 "__PDF_LINE_HEIGHT__",
                 pdf_line_height,
             )
@@ -820,6 +902,10 @@ class Audit:
             .replace(
                 "__PDF_EVENT_WIDTH__",
                 pdf_event_width,
+            )
+            .replace(
+                "__PDF_ANALYSIS_REASON_WIDTH__",
+                pdf_analysis_reason_width,
             )
             .replace(
                 "__PDF_GUIDANCE_WIDTH__",

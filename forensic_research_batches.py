@@ -62,6 +62,13 @@ def _prepare(date1: str, date2: str) -> None:
     Preparation is the only destructive step in the helper. It removes generated
     ``.researched`` files for this date window so a new research run cannot
     accidentally mix fresh conclusions with stale batch outputs.
+
+    Args:
+        date1:
+            Inclusive workflow start date in ``YYYY-MM-DD`` format.
+
+        date2:
+            Inclusive workflow end date in ``YYYY-MM-DD`` format.
     """
     stale_paths = sorted(Path("outputs").glob(f"*_audited_returns.{date1}.{date2}.csv.researched"))
     for stale_path in stale_paths:
@@ -91,6 +98,13 @@ def _next(date1: str, date2: str) -> None:
     Existing researched files are validated before the command skips past them.
     That turns "next" into a guardrail: Codex cannot silently advance over a
     malformed prior batch.
+
+    Args:
+        date1:
+            Inclusive workflow start date in ``YYYY-MM-DD`` format.
+
+        date2:
+            Inclusive workflow end date in ``YYYY-MM-DD`` format.
     """
     batch_paths = _batch_paths(date1, date2)
     _require_batches(batch_paths, date1, date2)
@@ -124,7 +138,13 @@ def _next(date1: str, date2: str) -> None:
 
 
 def _validate_one(batch_path: Path) -> None:
-    """Validate one batch's .researched output and print a summary."""
+    """Validate one batch's .researched output and print a summary.
+
+    Args:
+        batch_path:
+            Source batch CSV path whose ``.researched`` file should be
+            validated.
+    """
     summary = _validate_researched_file(batch_path)
     _print_json({"status": "validated", **summary})
 
@@ -135,6 +155,13 @@ def _finalize(date1: str, date2: str) -> None:
     Finalization is deliberately all-or-nothing: every batch must pass validation
     before the consolidated ``inputs/real_world_events`` file is written. The
     concatenation order is the numeric batch order used by the analyst workflow.
+
+    Args:
+        date1:
+            Inclusive workflow start date in ``YYYY-MM-DD`` format.
+
+        date2:
+            Inclusive workflow end date in ``YYYY-MM-DD`` format.
     """
     batch_paths = _batch_paths(date1, date2)
     _require_batches(batch_paths, date1, date2)
@@ -173,6 +200,16 @@ def _batch_paths(date1: str, date2: str) -> list[Path]:
     Only files with a leading numeric prefix are batch files. This excludes the
     full audit CSV and any ad hoc output while preserving the intended sequence:
     1_, 2_, 3_, and so on.
+
+    Args:
+        date1:
+            Inclusive workflow start date in ``YYYY-MM-DD`` format.
+
+        date2:
+            Inclusive workflow end date in ``YYYY-MM-DD`` format.
+
+    Returns:
+        Sorted batch CSV paths.
     """
     paths = [
         path
@@ -183,7 +220,22 @@ def _batch_paths(date1: str, date2: str) -> list[Path]:
 
 
 def _require_batches(batch_paths: list[Path], date1: str, date2: str) -> None:
-    """Fail when no generated batch CSV files are available."""
+    """Fail when no generated batch CSV files are available.
+
+    Args:
+        batch_paths:
+            Batch paths found for the workflow.
+
+        date1:
+            Inclusive workflow start date in ``YYYY-MM-DD`` format.
+
+        date2:
+            Inclusive workflow end date in ``YYYY-MM-DD`` format.
+
+    Raises:
+        FileNotFoundError:
+            Raised if ``batch_paths`` is empty.
+    """
     if not batch_paths:
         raise FileNotFoundError(
             f"No batch files found matching outputs/*_audited_returns.{date1}.{date2}.csv"
@@ -191,13 +243,29 @@ def _require_batches(batch_paths: list[Path], date1: str, date2: str) -> None:
 
 
 def _numeric_prefix(path: Path) -> int | None:
-    """Return a leading numeric batch prefix from a file name."""
+    """Return a leading numeric batch prefix from a file name.
+
+    Args:
+        path:
+            Batch path whose file name may begin with a numeric prefix.
+
+    Returns:
+        Numeric prefix, or null when the file name has no numeric prefix.
+    """
     prefix = path.name.split("_", maxsplit=1)[0]
     return int(prefix) if prefix.isdigit() else None
 
 
 def _researched_path(batch_path: Path) -> Path:
-    """Return the required .researched output path for one batch CSV."""
+    """Return the required .researched output path for one batch CSV.
+
+    Args:
+        batch_path:
+            Source batch CSV path.
+
+    Returns:
+        Path to the required researched output file.
+    """
     return batch_path.with_name(f"{batch_path.name}.researched")
 
 
@@ -208,6 +276,21 @@ def _validate_researched_file(batch_path: Path) -> dict[str, Any]:
     row where ``needs_review`` is true, in the same order. That preserves the
     analyst's row-level contract without requiring the output to repeat all
     source columns.
+
+    Args:
+        batch_path:
+            Source batch CSV path.
+
+    Returns:
+        Validation summary for the batch and its researched output.
+
+    Raises:
+        FileNotFoundError:
+            Raised if the source batch or researched output is missing.
+
+        AssertionError:
+            Raised if the researched output schema, values, or reviewed row
+            order is invalid.
     """
     if not batch_path.exists():
         raise FileNotFoundError(f"Batch CSV does not exist: {batch_path}")
@@ -246,7 +329,19 @@ def _validate_researched_file(batch_path: Path) -> dict[str, Any]:
 
 
 def _read_csv_rows(path: Path) -> list[dict[str, str]]:
-    """Read CSV rows as dictionaries."""
+    """Read CSV rows as dictionaries.
+
+    Args:
+        path:
+            CSV path to read.
+
+    Returns:
+        CSV rows as dictionaries keyed by header name.
+
+    Raises:
+        AssertionError:
+            Raised if the CSV is missing a header.
+    """
     with path.open(encoding="utf-8", newline="") as csv_file:
         reader = csv.DictReader(csv_file)
         if reader.fieldnames is None:
@@ -260,6 +355,17 @@ def _assert_exact_columns(path: Path, rows: list[dict[str, str]]) -> None:
     The exact header matters because ``finalize`` concatenates files without
     trying to infer or repair schema drift. Empty researched files still need the
     header, so the empty-file branch reads it directly.
+
+    Args:
+        path:
+            Researched CSV path being validated.
+
+        rows:
+            Researched CSV rows already read from ``path``.
+
+    Raises:
+        AssertionError:
+            Raised if the researched CSV header differs from the analyst schema.
     """
     actual_columns: list[str]
     if rows:
@@ -284,12 +390,23 @@ def _assert_valid_values(path: Path, rows: list[dict[str, str]]) -> None:
 
     Narrative and URL fields are intentionally unconstrained because they depend
     on external research. Enum fields are constrained so downstream reason
-    overrides can rely on stable labels such as MASSIVE, YFINANCE, and SPLIT.
+    overrides can rely on stable labels such as SOURCE1, SOURCE2, and SPLIT.
+
+    Args:
+        path:
+            Researched CSV path being validated.
+
+        rows:
+            Researched CSV rows already read from ``path``.
+
+    Raises:
+        AssertionError:
+            Raised if an enum-like field contains an unsupported value.
     """
     allowed_values = {
         "event_detected": {"YES", "NO", "UNCERTAIN"},
         "event_bucket": set(schema.REAL_WORLD_EVENT_BUCKETS),
-        "likely_correct_source": {"MASSIVE", "YFINANCE", "BOTH", "NEITHER", "UNCERTAIN"},
+        "likely_correct_source": {"SOURCE1", "SOURCE2", "BOTH", "NEITHER", "UNCERTAIN"},
         "research_confidence": {"HIGH", "MEDIUM", "LOW"},
     }
 
@@ -306,7 +423,15 @@ def _assert_valid_values(path: Path, rows: list[dict[str, str]]) -> None:
 
 
 def _row_key(row: dict[str, str]) -> tuple[str, str]:
-    """Return the row identity used to preserve reviewed batch order."""
+    """Return the row identity used to preserve reviewed batch order.
+
+    Args:
+        row:
+            CSV row dictionary.
+
+    Returns:
+        Normalized ``(ticker, date)`` key.
+    """
     return (
         row.get("ticker", "").strip().upper(),
         row.get("date", "").strip()[:10],
@@ -314,12 +439,28 @@ def _row_key(row: dict[str, str]) -> tuple[str, str]:
 
 
 def _is_true(value: str) -> bool:
-    """Return whether a CSV boolean value represents true."""
+    """Return whether a CSV boolean value represents true.
+
+    Args:
+        value:
+            CSV boolean text.
+
+    Returns:
+        True when the value is a supported truthy spelling.
+    """
     return value.strip().lower() in {"1", "true", "t", "yes", "y"}
 
 
 def _batch_instructions(batch_path: Path) -> str:
-    """Return the instruction summary for the current batch."""
+    """Return the instruction summary for the current batch.
+
+    Args:
+        batch_path:
+            Current batch CSV path.
+
+    Returns:
+        One-batch research instruction text.
+    """
     return (
         f"Beginning independent research for {batch_path}. No conclusions from prior files "
         "are being used. Read only this batch CSV, follow forensic_ai_analyst_instructions.txt, "
@@ -328,7 +469,12 @@ def _batch_instructions(batch_path: Path) -> str:
 
 
 def _print_json(payload: dict[str, Any]) -> None:
-    """Print command output as stable JSON for Codex or humans."""
+    """Print command output as stable JSON for Codex or humans.
+
+    Args:
+        payload:
+            JSON-serializable command result.
+    """
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 

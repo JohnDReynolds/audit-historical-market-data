@@ -86,23 +86,23 @@ def add_real_world_reconciliation_flags(df: pl.DataFrame) -> pl.DataFrame:
 
     # Only return-bearing corporate actions should change reason codes through
     # event-return reconciliation. NEWS and PRICING_METHOD can explain why a row
-    # needs attention, but they should not mechanically convert a vendor into a
-    # missing dividend/split adjustment.
+    # needs attention, but they should not mechanically convert a data source
+    # into a missing dividend/split adjustment.
     return_bearing_event_expr: pl.Expr = (
         (pl.col("event_detected") == "YES")
         & pl.col("event_bucket").is_in(schema.REAL_WORLD_EVENT_RETURN_BUCKETS)
         & pl.col("expected_return_impact").is_not_null()
     )
 
-    # Signed reconciliation matters because diff_return = Massive - yFinance.
-    # If Massive is correct and yFinance missed a positive event, diff_return
-    # should be positive. If yFinance is correct and Massive missed the event,
+    # Signed reconciliation matters because diff_return = source1 - source2.
+    # If source1 is correct and source2 missed a positive event, diff_return
+    # should be positive. If source2 is correct and source1 missed the event,
     # diff_return should be negative. This prevents a real event with the right
     # magnitude but wrong direction from overriding the deterministic diagnosis.
     expected_diff_for_likely_source_expr: pl.Expr = (
-        pl.when(pl.col("likely_correct_source") == "MASSIVE")
+        pl.when(pl.col("likely_correct_source") == "SOURCE1")
         .then(pl.col("expected_return_impact"))
-        .when(pl.col("likely_correct_source") == "YFINANCE")
+        .when(pl.col("likely_correct_source") == "SOURCE2")
         .then(-pl.col("expected_return_impact"))
         .otherwise(None)
     )
@@ -129,22 +129,25 @@ def add_real_world_reconciliation_flags(df: pl.DataFrame) -> pl.DataFrame:
         )
         .with_columns(
             (
-                # If research names Massive as the correct source and Massive's
+                # If research names source1 as the correct source and source1's
                 # own explicit event effect explains the signed return gap, a
                 # missing numeric expected_return_impact should not block the
                 # source-owner override.
                 pl.col("diff_return").is_not_null()
-                & (pl.col("likely_correct_source") == "MASSIVE")
+                & (pl.col("likely_correct_source") == "SOURCE1")
                 & (pl.col("event_detected") == "YES")
                 & pl.col("event_bucket").is_in(schema.REAL_WORLD_EVENT_RETURN_BUCKETS)
-                & (pl.col("ms_div_split") != "")
-                & (pl.col("yf_div_split") == "")
-                & pl.col("ms_div_split_factor_explicit").is_not_null()
+                & (pl.col("source1_div_split") != "")
+                & (pl.col("source2_div_split") == "")
+                & pl.col("source1_div_split_factor_explicit").is_not_null()
                 & (
-                    (pl.col("diff_return") - (pl.col("ms_div_split_factor_explicit") - 1.0)).abs()
+                    (
+                        pl.col("diff_return")
+                        - (pl.col("source1_div_split_factor_explicit") - 1.0)
+                    ).abs()
                     <= schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE
                 )
-            ).alias("massive_event_return_explains_yf_gap")
+            ).alias("source1_event_return_explains_source2_gap")
         )
         .with_columns(
             # These support flags are later used to rewrite generic or
@@ -152,14 +155,14 @@ def add_real_world_reconciliation_flags(df: pl.DataFrame) -> pl.DataFrame:
             (
                 (
                     pl.col("real_world_event_return_match")
-                    | pl.col("massive_event_return_explains_yf_gap")
+                    | pl.col("source1_event_return_explains_source2_gap")
                 )
-                & pl.col("likely_correct_source").is_in(["MASSIVE", "BOTH"])
-            ).alias("real_world_event_supports_massive"),
+                & pl.col("likely_correct_source").is_in(["SOURCE1", "BOTH"])
+            ).alias("real_world_event_supports_source1"),
             (
                 pl.col("real_world_event_return_match")
-                & pl.col("likely_correct_source").is_in(["YFINANCE", "BOTH"])
-            ).alias("real_world_event_supports_yfinance"),
+                & pl.col("likely_correct_source").is_in(["SOURCE2", "BOTH"])
+            ).alias("real_world_event_supports_source2"),
         )
     )
 
@@ -174,16 +177,32 @@ def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
     Returns:
         DataFrame with research-aware ``analysis_reason_code`` values.
     """
-    # These are pre-research diagnostics that can point at Massive, but may
-    # actually indicate yFinance is missing the real-world event once external
+    # These are pre-research diagnostics that can point at source1, but may
+    # actually indicate source2 is missing the real-world event once external
     # evidence is joined. They are deliberately eligible for source reversal only
     # after research supplies both a likely source and an event magnitude that
     # reconciles to the signed return gap.
-    yf_missing_override_candidates: list[str] = schema.reason_codes_in_group(
-        "yf_missing_override_candidate"
+    source2_missing_override_candidates: list[str] = schema.reason_codes_in_group(
+        "source2_missing_override_candidate"
     )
-    ms_missing_override_candidates: list[str] = schema.reason_codes_in_group(
-        "ms_missing_override_candidate"
+    source1_missing_override_candidates: list[str] = schema.reason_codes_in_group(
+        "source1_missing_override_candidate"
+    )
+    source2_event_impact_expr: pl.Expr = pl.col("source2_div_split_factor_explicit") - 1.0
+    source2_event_match_tolerance_expr: pl.Expr = pl.max_horizontal(
+        pl.lit(schema.REAL_WORLD_EVENT_MIN_RETURN_TOLERANCE),
+        source2_event_impact_expr.abs() * schema.REAL_WORLD_EVENT_REL_RETURN_TOLERANCE,
+    )
+    source2_event_return_explains_source1_gap: pl.Expr = (
+        # With diff_return = source1 - source2, a positive event captured by
+        # source2 but missed by source1 should make source1 lower by roughly
+        # the source2 event impact.
+        pl.col("diff_return").is_not_null()
+        & pl.col("source2_div_split_factor_explicit").is_not_null()
+        & (
+            (pl.col("diff_return") + source2_event_impact_expr).abs()
+            <= source2_event_match_tolerance_expr
+        )
     )
 
     return (
@@ -191,76 +210,77 @@ def apply_real_world_reason_policy(df: pl.DataFrame) -> pl.DataFrame:
         .with_columns(
             # Reason-code overrides are deliberately conservative: research must
             # identify the economically correct source and the signed event
-            # impact must explain the Massive/yFinance return difference. The
+            # impact must explain the source1/source2 return difference. The
             # override changes the diagnostic owner; it does not change raw return
             # math or event-marker fields.
             pl.when(
-                # Research says Massive is correct and the only deterministic
-                # issue was event timing, so ownership flips from a Massive date
-                # mismatch to a yFinance date mismatch.
-                (pl.col("likely_correct_source") == "MASSIVE")
-                & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+                # Research says source1 is correct and the only deterministic
+                # issue was event timing, so ownership flips from a source1 date
+                # mismatch to a source2 date mismatch.
+                (pl.col("likely_correct_source") == "SOURCE1")
+                & (pl.col("analysis_reason_code") == "SOURCE1_EVENT_DATE_MISMATCH")
                 & (
                     pl.col("real_world_event_return_match")
-                    | pl.col("massive_event_return_explains_yf_gap")
+                    | pl.col("source1_event_return_explains_source2_gap")
                 )
             )
-            .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
+            .then(pl.lit("SOURCE2_EVENT_DATE_MISMATCH"))
             .when(
-                # Research says Massive carries the real event and the return
-                # math supports that conclusion. Generic or Massive-leaning
-                # pre-research diagnostics become a yFinance missing-event issue.
-                (pl.col("likely_correct_source") == "MASSIVE")
-                & pl.col("analysis_reason_code").is_in(yf_missing_override_candidates)
+                # Research says source1 carries the real event and the return
+                # math supports that conclusion. Generic or source1-leaning
+                # pre-research diagnostics become a source2 missing-event issue.
+                (pl.col("likely_correct_source") == "SOURCE1")
+                & pl.col("analysis_reason_code").is_in(source2_missing_override_candidates)
                 & (
                     pl.col("real_world_event_return_match")
-                    | pl.col("massive_event_return_explains_yf_gap")
+                    | pl.col("source1_event_return_explains_source2_gap")
                 )
             )
-            .then(pl.lit("YF_MISSING_EVENT"))
+            .then(pl.lit("SOURCE2_MISSING_EVENT"))
             .when(
                 # The support flags are broader than the direct likely-source
                 # checks above because they also allow BOTH when the event math
-                # confirms Massive's treatment is economically valid.
-                pl.col("real_world_event_supports_massive")
-                & (pl.col("analysis_reason_code") == "MS_EVENT_DATE_MISMATCH")
+                # confirms source1's treatment is economically valid.
+                pl.col("real_world_event_supports_source1")
+                & (pl.col("analysis_reason_code") == "SOURCE1_EVENT_DATE_MISMATCH")
             )
-            .then(pl.lit("YF_EVENT_DATE_MISMATCH"))
+            .then(pl.lit("SOURCE2_EVENT_DATE_MISMATCH"))
             .when(
-                pl.col("real_world_event_supports_massive")
-                & pl.col("analysis_reason_code").is_in(yf_missing_override_candidates)
+                pl.col("real_world_event_supports_source1")
+                & pl.col("analysis_reason_code").is_in(source2_missing_override_candidates)
             )
-            .then(pl.lit("YF_MISSING_EVENT"))
+            .then(pl.lit("SOURCE2_MISSING_EVENT"))
             .when(
                 # The mirror case: research and signed return math support
-                # yFinance, so selected pre-research diagnostics become a
-                # Massive missing-event issue.
-                pl.col("real_world_event_supports_yfinance")
-                & pl.col("analysis_reason_code").is_in(ms_missing_override_candidates)
+                # source2, so selected pre-research diagnostics become a
+                # source1 missing-event issue.
+                pl.col("real_world_event_supports_source2")
+                & pl.col("analysis_reason_code").is_in(source1_missing_override_candidates)
             )
-            .then(pl.lit("MS_MISSING_EVENT"))
+            .then(pl.lit("SOURCE1_MISSING_EVENT"))
             .when(
                 # Some cash distributions reconcile within the broader review
                 # tolerance but not the tight deterministic event-return
-                # tolerance, so they can initially look like a yFinance internal
-                # event-return mismatch. If external research says yFinance is
-                # correct, yFinance carries the event marker, and Massive has no
+                # tolerance, so they can initially look like a source2 internal
+                # event-return mismatch. If external research says source2 is
+                # correct, source2 carries the event marker, and source1 has no
                 # same-day event, the operational issue is still a missing
-                # Massive event.
-                (pl.col("likely_correct_source") == "YFINANCE")
+                # source1 event.
+                (pl.col("likely_correct_source") == "SOURCE2")
                 & (pl.col("event_detected") == "YES")
                 & pl.col("event_bucket").is_in(schema.REAL_WORLD_EVENT_RETURN_BUCKETS)
-                & (pl.col("ms_div_split") == "")
-                & (pl.col("yf_div_split") != "")
+                & (pl.col("source1_div_split") == "")
+                & (pl.col("source2_div_split") != "")
+                & source2_event_return_explains_source1_gap
                 & pl.col("analysis_reason_code").is_in(
                     [
-                        "YF_DIV_SPLIT_RETURN_MISMATCH",
+                        "SOURCE2_DIV_SPLIT_RETURN_MISMATCH",
                         "EVENT_SOURCE_MISMATCH",
-                        "MS_RETURN_METHOD_UNRESOLVED",
+                        "SOURCE1_RETURN_METHOD_UNRESOLVED",
                     ]
                 )
             )
-            .then(pl.lit("MS_MISSING_EVENT"))
+            .then(pl.lit("SOURCE1_MISSING_EVENT"))
             .otherwise(pl.col("analysis_reason_code"))
             .alias("analysis_reason_code")
         )
@@ -356,14 +376,14 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
                 .fill_null("")
                 .alias("evidence_summary_from_file"),
                 pl.col("real_world_event").fill_null("").alias("real_world_event_from_file"),
-                pl.col("primary_source_url")
+                pl.col("primary_url")
                 .cast(pl.Utf8)
                 .fill_null("")
-                .alias("primary_source_url_from_file"),
-                pl.col("secondary_source_url")
+                .alias("primary_url_from_file"),
+                pl.col("secondary_url")
                 .cast(pl.Utf8)
                 .fill_null("")
-                .alias("secondary_source_url_from_file"),
+                .alias("secondary_url_from_file"),
             ]
         )
         .group_by(["ticker", "date_key"])
@@ -377,8 +397,8 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
             pl.col("likely_correct_source_from_file").last(),
             pl.col("research_confidence_from_file").last(),
             pl.col("evidence_summary_from_file").last(),
-            pl.col("primary_source_url_from_file").last(),
-            pl.col("secondary_source_url_from_file").last(),
+            pl.col("primary_url_from_file").last(),
+            pl.col("secondary_url_from_file").last(),
             pl.col("real_world_event_from_file").last(),
         )
     )
@@ -411,11 +431,11 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
                 "real_world_event"
             ),
             pl.coalesce(
-                [pl.col("primary_source_url_from_file"), pl.col("primary_source_url")]
-            ).alias("primary_source_url"),
+                [pl.col("primary_url_from_file"), pl.col("primary_url")]
+            ).alias("primary_url"),
             pl.coalesce(
-                [pl.col("secondary_source_url_from_file"), pl.col("secondary_source_url")]
-            ).alias("secondary_source_url"),
+                [pl.col("secondary_url_from_file"), pl.col("secondary_url")]
+            ).alias("secondary_url"),
         )
         .drop(
             [
@@ -426,8 +446,8 @@ def join_events(df: pl.DataFrame, real_world_events_path: str) -> pl.DataFrame:
                 "likely_correct_source_from_file",
                 "research_confidence_from_file",
                 "evidence_summary_from_file",
-                "primary_source_url_from_file",
-                "secondary_source_url_from_file",
+                "primary_url_from_file",
+                "secondary_url_from_file",
                 "real_world_event_from_file",
             ]
         )

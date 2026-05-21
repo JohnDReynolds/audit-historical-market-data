@@ -13,11 +13,11 @@ import real_world_events
 
 
 def category_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
-    """Return actionable Massive data problems using compact report columns.
+    """Return actionable source1 data problems using compact report columns.
 
-    Category actionable contains review-required rows where Massive likely needs
+    Category actionable contains review-required rows where source1 likely needs
     review or correction. These rows are intended for operational
-    triage: identify whether Massive has a data problem, what the likely
+    triage: identify whether source1 has a data problem, what the likely
     problem is, and what should be done to fix it.
 
     Args:
@@ -30,9 +30,9 @@ def category_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     review_required_expr: pl.Expr = audit_classification.review_required_expr()
 
     # Actionable means the row both merits review and currently points to a
-    # Massive-side remediation candidate after deterministic diagnostics and
+    # source1-side remediation candidate after deterministic diagnostics and
     # optional real-world research have been applied.
-    return audited_returns.filter(review_required_expr & pl.col("massive_needs_fix")).select(
+    return audited_returns.filter(review_required_expr & pl.col("source1_needs_fix")).select(
         schema.CATEGORY_REPORT_COLUMNS
     )
 
@@ -41,7 +41,7 @@ def category_non_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     """Return informational/non-action rows using compact report columns.
 
     Category non-actionable contains review-required rows that do not appear to be
-    actionable Massive data defects after deterministic diagnostics and optional
+    actionable source1 data defects after deterministic diagnostics and optional
     real-world research have been applied.
 
     Args:
@@ -54,9 +54,9 @@ def category_non_actionable(audited_returns: pl.DataFrame) -> pl.DataFrame:
     review_required_expr: pl.Expr = audit_classification.review_required_expr()
 
     # Non-actionable rows are still useful audit evidence: they document
-    # reconciled market moves, yFinance-side issues, close reversals, or review
-    # triggers that do not currently require a Massive data correction.
-    return audited_returns.filter(review_required_expr & ~pl.col("massive_needs_fix")).select(
+    # reconciled market moves, source2-side issues, close reversals, or review
+    # triggers that do not currently require a source1 data correction.
+    return audited_returns.filter(review_required_expr & ~pl.col("source1_needs_fix")).select(
         schema.CATEGORY_REPORT_COLUMNS
     )
 
@@ -69,7 +69,7 @@ def collect_returns_output(df_lf: pl.LazyFrame) -> pl.DataFrame:
             Detailed lazy return-audit frame.
 
     Returns:
-        DataFrame with the primary return-audit output columns and blank
+        DataFrame with the source1 return-audit output columns and blank
         real-world event columns ready for optional enrichment.
     """
     df: pl.DataFrame = (

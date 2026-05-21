@@ -137,6 +137,9 @@ class MassiveData:
         self.adjusted_ohlcv = self._load_ohlcv(True)
         self.unadjusted_ohlcv = self._load_ohlcv(False)
         self.splits = self._load_splits()
+        self.source1_prices = self._load_source1_prices()
+        self.source1_dividends = self._load_source1_dividends()
+        self.source1_splits = self._load_source1_splits()
 
     def _file_path(self, base_file_path: str) -> str:
         """Build a date-specific CSV file path.
@@ -149,6 +152,98 @@ class MassiveData:
             File path with appended date range suffixes.
         """
         return f"{base_file_path}.{self.from_date}.{self.to_date}.csv"
+
+    def _load_source1_prices(self) -> pl.LazyFrame:
+        """Write and load normalized source1 OHLCV rows.
+
+        Massive is the default source1 adapter. The normalized close is
+        Massive's raw close, while ``adjusted_close`` is Massive's
+        split-adjusted close.
+
+        Returns:
+            LazyFrame containing ``identifier``, ``date``, OHLCV, and
+            ``adjusted_close``.
+        """
+        file_path = self._file_path(schema.PATH_SOURCE1_PRICES)
+
+        if self.always_download or not Path(file_path).exists():
+            (
+                self.unadjusted_ohlcv.select(
+                    pl.col("ticker").alias("identifier"),
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                )
+                .join(
+                    self.adjusted_ohlcv.select(
+                        pl.col("ticker").alias("identifier"),
+                        "date",
+                        pl.col("close").alias("adjusted_close"),
+                    ),
+                    on=["identifier", "date"],
+                    how="left",
+                )
+                .collect()
+                .write_csv(file_path)
+            )
+
+        return pl.scan_csv(file_path)
+
+    def _load_source1_dividends(self) -> pl.LazyFrame:
+        """Write and load normalized source1 dividend rows.
+
+        Returns:
+            LazyFrame containing ``identifier``, ``ex_date``, ``dividend_type``,
+            and ``amount``.
+        """
+        file_path = self._file_path(schema.PATH_SOURCE1_DIVIDENDS)
+
+        if self.always_download or not Path(file_path).exists():
+            (
+                self.dividends.select(
+                    pl.col("ticker").alias("identifier"),
+                    pl.col("ex_dividend_date").alias("ex_date"),
+                    "dividend_type",
+                    pl.col("cash_amount").alias("amount"),
+                )
+                .collect()
+                .write_csv(file_path)
+            )
+
+        return pl.scan_csv(file_path)
+
+    def _load_source1_splits(self) -> pl.LazyFrame:
+        """Write and load normalized source1 split rows.
+
+        Massive stores split events as ``split_from`` and ``split_to``.  The
+        normalized amount is the split ratio, so a 4-for-1 split is ``4.0`` and
+        a 1-for-2 reverse split is ``0.5``.
+
+        Returns:
+            LazyFrame containing ``identifier``, ``ex_date``, ``split_type``, and
+            ``amount``.
+        """
+        file_path = self._file_path(schema.PATH_SOURCE1_SPLITS)
+
+        if self.always_download or not Path(file_path).exists():
+            (
+                self.splits.select(
+                    pl.col("ticker").alias("identifier"),
+                    pl.col("execution_date").alias("ex_date"),
+                    pl.lit("sp").alias("split_type"),
+                    pl.when(pl.col("split_from") != 0)
+                    .then(pl.col("split_to") / pl.col("split_from"))
+                    .otherwise(0)
+                    .alias("amount"),
+                )
+                .collect()
+                .write_csv(file_path)
+            )
+
+        return pl.scan_csv(file_path)
 
     @staticmethod
     def _format_date(

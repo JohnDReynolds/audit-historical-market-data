@@ -1,24 +1,28 @@
-"""Adjusted-OHLCV audit helpers."""
+"""Massive-specific adjusted-OHLCV source QA helpers."""
 
 # Third-party imports.
 import polars as pl
 
 # Project imports.
-from massive_data import MassiveData
 import audit_schema as schema
+from massive_data import MassiveData
 import utilities as util
 
 
-def audit_adjusted_ohlcv(
+def audit_massive_split_adjusted_ohlcv(
     massive_data: MassiveData,
     from_date: str,
     to_date: str,
 ) -> pl.DataFrame:
-    """Audit Massive split-adjusted OHLCV values.
+    """Audit Massive split-adjusted OHLCV endpoint consistency.
 
     This function compares Massive unadjusted OHLCV data against Massive
     split-adjusted OHLCV data by independently applying split adjustment
     factors from the Massive split-event file.
+
+    This is a Massive-only source QA check. Massive adjusted aggregate prices
+    are split-adjusted only; they are not dividend-adjusted total-return prices.
+    The main generic data-source audit is intentionally separate.
 
     The audit returns one row per mismatched OHLCV field.
 
@@ -225,6 +229,29 @@ def audit_adjusted_ohlcv(
     )
 
     # Persist audit output to disk.
-    df.write_csv(f"{schema.PATH_AUDITED_ADJUSTED_OHLCV}.{from_date}.{to_date}.csv")
+    df.write_csv(f"{schema.PATH_AUDITED_SPLIT_ADJUSTED_OHLCV}.{from_date}.{to_date}.csv")
 
     return df
+
+
+def audit_adjusted_ohlcv(
+    massive_data: MassiveData,
+    from_date: str,
+    to_date: str,
+) -> pl.DataFrame:
+    """Compatibility wrapper for the Massive split-adjusted OHLCV QA check.
+
+    Args:
+        massive_data:
+            Loaded Massive data wrapper.
+
+        from_date:
+            Inclusive audit start date in ``YYYY-MM-DD`` format.
+
+        to_date:
+            Inclusive audit end date in ``YYYY-MM-DD`` format.
+
+    Returns:
+        DataFrame containing only mismatched OHLCV values.
+    """
+    return audit_massive_split_adjusted_ohlcv(massive_data, from_date, to_date)

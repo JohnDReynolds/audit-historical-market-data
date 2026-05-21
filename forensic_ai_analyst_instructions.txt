@@ -35,7 +35,7 @@ For each qualifying row:
 
 1. Perform real external research.
 2. Identify the MOST LIKELY economically plausible explanation.
-3. Determine whether Massive or yFinance is more economically correct.
+3. Determine whether source1 or source2 is more economically correct.
 4. Use BOTH:
    - external real-world evidence
    - audit_returns() input-derived calculation
@@ -66,24 +66,28 @@ You may use the same source only if it is independently searched, opened,
 reviewed, and cited for the current row.
 
 ==================================================
-VENDOR RULES
+DATA SOURCE RULES
 ==================================================
 
-There are EXACTLY TWO vendors:
+There are EXACTLY TWO data sources:
 
-- Massive (fields prefixed ms_ or massive_)
-- yFinance (fields prefixed yf_)
+- source1 = audited data source (fields prefixed source1_)
+- source2 = comparison data source (fields prefixed source2_)
+
+The audit is asymmetric. When source2 is likely correct, source1 may need
+remediation. When source1 is likely correct, the row may identify a source2
+issue or a non-actionable reconciliation item.
 
 Always explicitly name:
-- Massive
-- yFinance
+- source1
+- source2
 
 Never use generic phrases such as:
-- one vendor
-- another vendor
+- one data source
+- another data source
 - one source
 - another source
-- pricing vendor
+- pricing provider
 - different providers
 
 ==================================================
@@ -93,7 +97,7 @@ CORE ANALYTICAL PRINCIPLE
 External research identifies the real-world event.
 
 The input row math determines:
-- which vendor is economically correct
+- which data source is economically correct
 - whether the discrepancy reconciles
 - whether the issue is actionable
 
@@ -144,7 +148,7 @@ categories have been reasonably checked:
     - stale closes
     - exchange corrections
     - pricing timing differences
-    - vendor normalization differences
+    - data source normalization differences
 
 Do NOT classify PRICING_METHOD until all prior steps were investigated.
 
@@ -200,7 +204,7 @@ Preferred authoritative sources:
 - exchange notices
 - official dividend/split announcements
 
-Credible secondary sources:
+Credible sources:
 - Reuters
 - Bloomberg
 - Yahoo Finance
@@ -254,35 +258,35 @@ Trading date being reconciled.
 PRICE / ADJUSTED CLOSE FIELDS
 --------------------------------------------------
 
-ms_close:
-Massive unadjusted close.
+source1_close:
+source1 unadjusted close.
 
-yf_close:
-yFinance unadjusted close.
+source2_close:
+source2 unadjusted close.
 
-ms_adj_factor:
-Massive cumulative adjustment factor.
+source1_adj_factor:
+source1 cumulative adjustment factor.
 
-yf_adj_factor:
-yFinance implied adjustment factor:
-yf_adj_close / yf_close
+source2_adj_factor:
+source2 implied adjustment factor:
+source2_adj_close / source2_close
 
-ms_adj_close:
-Massive adjusted close:
-ms_close * ms_adj_factor
+source1_adj_close:
+source1 adjusted close:
+source1_close * source1_adj_factor
 
-yf_adj_close:
-yFinance adjusted close.
+source2_adj_close:
+source2 adjusted close.
 
 --------------------------------------------------
 EVENT MARKER FIELDS
 --------------------------------------------------
 
-ms_div_split:
-Massive event marker string.
+source1_div_split:
+source1 event marker string.
 
-yf_div_split:
-yFinance event marker string.
+source2_div_split:
+source2 event marker string.
 
 Split format:
 sp:<split_factor>
@@ -296,67 +300,67 @@ ca:<cash_amount>
 Example:
 ca:0.82
 
-Massive cash marker formats:
-cd:<cash_amount> = Massive regular cash dividend.
-sc:<cash_amount> = Massive special cash dividend.
+source1 cash marker formats:
+cd:<cash_amount> = source1 regular cash dividend.
+sc:<cash_amount> = source1 special cash dividend.
 ca:<cash_amount> = generic cash action/distribution marker when no regular/special distinction is available.
 
-yFinance cash marker format:
-ca:<cash_amount> = yFinance generic cash dividend/distribution marker.
+source2 cash marker format:
+ca:<cash_amount> = source2 generic cash dividend/distribution marker.
 
 For economic event matching, cd:<amount>, sc:<amount>, and ca:<amount> are all cash distribution markers. Do not treat cd/sc versus ca as an event-source mismatch by itself when the cash amount and date reconcile.
 
-However, sc:<amount> is research-relevant. Special cash dividends more often create vendor adjustment, denominator, event classification, or timing differences than ordinary regular dividends. When ms_div_split contains sc:<amount>, explicitly investigate whether the special dividend caused the return difference or adjustment treatment.
+However, sc:<amount> is research-relevant. Special cash dividends more often create data source adjustment, denominator, event classification, or timing differences than ordinary regular dividends. When source1_div_split contains sc:<amount>, explicitly investigate whether the special dividend caused the return difference or adjustment treatment.
 
 Multiple same-day events are space-separated.
 
 has_div_split_mismatch:
-true when Massive and yFinance event markers differ.
+true when source1 and source2 event markers differ.
 
 --------------------------------------------------
 RETURN FIELDS
 --------------------------------------------------
 
-ms_return_price:
-Massive raw price return from unadjusted closes.
+source1_return_price:
+source1 raw price return from unadjusted closes.
 
-yf_return_price:
-yFinance raw price return from unadjusted closes.
+source2_return_price:
+source2 raw price return from unadjusted closes.
 
-ms_div_split_factor_implied:
-Massive implied dividend/split factor inferred from adjusted and raw price returns:
-(1 + ms_return) / (1 + ms_return_price)
+source1_div_split_factor_implied:
+source1 implied dividend/split factor inferred from adjusted and raw price returns:
+(1 + source1_return) / (1 + source1_return_price)
 
-ms_div_split_factor_explicit:
-Massive explicit dividend/split factor derived from Massive event records.
+source1_div_split_factor_explicit:
+source1 explicit dividend/split factor derived from source1 event records.
 
-yf_div_split_factor_implied:
-yFinance implied dividend/split factor inferred from adjusted and raw price returns:
-(1 + yf_return) / (1 + yf_return_price)
+source2_div_split_factor_implied:
+source2 implied dividend/split factor inferred from adjusted and raw price returns:
+(1 + source2_return) / (1 + source2_return_price)
 
-yf_div_split_factor_explicit:
-yFinance explicit dividend/split factor derived from yFinance event records.
+source2_div_split_factor_explicit:
+source2 explicit dividend/split factor derived from source2 event records.
 
-diff_ms_div_split_factor:
-Difference between Massive implied vs explicit dividend/split factor.
+diff_source1_div_split_factor:
+Difference between source1 implied vs explicit dividend/split factor.
 
-diff_yf_div_split_factor:
-Difference between yFinance implied vs explicit dividend/split factor.
+diff_source2_div_split_factor:
+Difference between source2 implied vs explicit dividend/split factor.
 
-ms_return:
-Final Massive adjusted return.
+source1_return:
+Final source1 adjusted return.
 
-yf_return:
-Final yFinance adjusted return.
+source2_return:
+Final source2 adjusted return.
 
 diff_return:
 IMPORTANT SIGN CONVENTION:
 
-diff_return = ms_return - yf_return
+diff_return = source1_return - source2_return
 
 Therefore:
-- positive diff_return => Massive return is higher
-- negative diff_return => Massive return is lower
+- positive diff_return => source1 return is higher
+- negative diff_return => source1 return is lower
 
 --------------------------------------------------
 REVIEW / DIAGNOSTIC FIELDS
@@ -369,20 +373,20 @@ review_priority:
 HIGH / MEDIUM / LOW review priority.
 
 heuristic_anomaly_score:
-Massive heuristic anomaly score.
+source1 heuristic anomaly score.
 
-This is a deterministic pre-research audit diagnostic generated from Massive
+This is a deterministic pre-research audit diagnostic generated from source1
 return behavior. It helps explain why a row was selected for review, especially
-when the row was triggered by an unusual Massive return pattern rather than a
-material Massive/yFinance return difference.
+when the row was triggered by an unusual source1 return pattern rather than a
+material source1/source2 return difference.
 
 Do NOT use heuristic_anomaly_score by itself to assign likely_correct_source.
 Use it only as context. likely_correct_source must be determined from:
-- ms_return
-- yf_return
+- source1_return
+- source2_return
 - diff_return
 - event-return reconciliation
-- vendor event markers
+- data source event markers
 - adjustment-factor mechanics
 - external real-world evidence
 
@@ -391,33 +395,33 @@ Deterministic diagnostic classification.
 
 Important values include:
 - CLOSE_REVERSAL
-- MS_MISSING_EVENT
-- MS_EVENT_DATE_MISMATCH
-- MS_EXTRA_EVENT
-- MS_PARTIAL_EVENT
-- MS_ADJ_FACTOR_CONTINUITY
+- SOURCE1_MISSING_EVENT
+- SOURCE1_EVENT_DATE_MISMATCH
+- SOURCE1_EXTRA_EVENT
+- SOURCE1_PARTIAL_EVENT
+- SOURCE1_ADJ_FACTOR_CONTINUITY
 - EVENT_DENOMINATOR_MISMATCH
 - EVENT_SOURCE_MISMATCH
 - HIGH_SCORE_ANOMALY
-- YF_DIV_SPLIT_RETURN_MISMATCH
-- YF_EVENT_DATE_MISMATCH
-- YF_MISSING_EVENT
-- MS_RETURN_METHOD_UNRESOLVED
+- SOURCE2_DIV_SPLIT_RETURN_MISMATCH
+- SOURCE2_EVENT_DATE_MISMATCH
+- SOURCE2_MISSING_EVENT
+- SOURCE1_RETURN_METHOD_UNRESOLVED
 
 analysis_confidence:
 Deterministic confidence label for the audit pipeline's current analysis classification.
 
-massive_needs_fix:
-true when the deterministic audit logic believes Massive may require correction.
+source1_needs_fix:
+true when the deterministic audit logic believes source1 may require correction.
 
-massive_problem_summary:
-Human-readable Massive issue summary.
+source1_problem_summary:
+Human-readable source1 issue summary.
 
-massive_why_incorrect:
-Human-readable explanation of why Massive may be incorrect.
+source1_why_incorrect:
+Human-readable explanation of why source1 may be incorrect.
 
-massive_fix_action:
-Suggested Massive remediation action.
+source1_fix_action:
+Suggested source1 remediation action.
 
 ==================================================
 MANDATORY FIELD USAGE RULE
@@ -425,25 +429,25 @@ MANDATORY FIELD USAGE RULE
 
 Before assigning likely_correct_source, the model MUST explicitly review:
 
-- ms_return
-- yf_return
+- source1_return
+- source2_return
 - diff_return
-- ms_div_split
-- yf_div_split
+- source1_div_split
+- source2_div_split
 - has_div_split_mismatch
-- ms_div_split_factor_implied
-- ms_div_split_factor_explicit
-- diff_ms_div_split_factor
-- yf_div_split_factor_implied
-- yf_div_split_factor_explicit
-- diff_yf_div_split_factor
-- ms_adj_factor
-- yf_adj_factor
+- source1_div_split_factor_implied
+- source1_div_split_factor_explicit
+- diff_source1_div_split_factor
+- source2_div_split_factor_implied
+- source2_div_split_factor_explicit
+- diff_source2_div_split_factor
+- source1_adj_factor
+- source2_adj_factor
 - analysis_reason_code
 - analysis_confidence
-- massive_needs_fix
-- massive_problem_summary
-- massive_why_incorrect
+- source1_needs_fix
+- source1_problem_summary
+- source1_why_incorrect
 
 These are authoritative audit fields, not generic metadata.
 
@@ -454,13 +458,13 @@ FIELD AUTHORITY HIERARCHY
 Use this hierarchy:
 
 1. Final return reconciliation
-   - ms_return
-   - yf_return
+   - source1_return
+   - source2_return
    - diff_return
 
 2. Explicit event evidence
-   - ms_div_split
-   - yf_div_split
+   - source1_div_split
+   - source2_div_split
    - *_div_split_explicit
 
 3. Adjusted-close mechanics
@@ -470,8 +474,8 @@ Use this hierarchy:
 
 4. Deterministic diagnostics
    - analysis_reason_code
-   - massive_needs_fix
-   - massive_problem_summary
+   - source1_needs_fix
+   - source1_problem_summary
 
 5. External research
 
@@ -480,7 +484,7 @@ SPLIT RECONCILIATION RULE
 ==================================================
 
 If:
-- ms_div_split or yf_div_split contains sp:<split_factor>
+- source1_div_split or source2_div_split contains sp:<split_factor>
 
 Then:
 expected_return_impact = split_factor - 1.0
@@ -503,25 +507,25 @@ audit_returns() uses the EVENT RETURN convention.
 When a split exists, compare:
 - expected_return_impact
 - diff_return
-- ms_div_split_factor_explicit - 1.0
-- yf_div_split_factor_explicit - 1.0
+- source1_div_split_factor_explicit - 1.0
+- source2_div_split_factor_explicit - 1.0
 - implied dividend/split factor fields minus 1.0
 
 If:
-- yFinance has the split
-- Massive does not
-- yFinance dividend/split factor impact explains diff_return
+- source2 has the split
+- source1 does not
+- source2 dividend/split factor impact explains diff_return
 
 Then:
-likely_correct_source should usually be YFINANCE.
+likely_correct_source should usually be SOURCE2.
 
 If:
-- Massive has the split
-- yFinance does not
-- Massive dividend/split factor impact explains diff_return
+- source1 has the split
+- source2 does not
+- source1 dividend/split factor impact explains diff_return
 
 Then:
-likely_correct_source should usually be MASSIVE.
+likely_correct_source should usually be SOURCE1.
 
 ==================================================
 SPINOFF RECONCILIATION RULE
@@ -530,7 +534,7 @@ SPINOFF RECONCILIATION RULE
 Use SPINOFF when shareholders receive shares of a separated company or merger
 partner through a spin-off, separation, or Reverse Morris Trust transaction.
 
-If a vendor event marker explains the return difference, use that marker as the
+If a data source event marker explains the return difference, use that marker as the
 expected_return_impact.
 
 If no marker exists but distributed-share value can be estimated,
@@ -558,23 +562,23 @@ Compare:
 - implied dividend/split factor impact, calculated as factor - 1.0
 - diff_return
 
-Use the vendor whose dividend/split factor impact reconciles correctly.
+Use the data source whose dividend/split factor impact reconciles correctly.
 
 ==================================================
 EVENT-DATE MISMATCH RULE
 ==================================================
 
 If:
-analysis_reason_code == MS_EVENT_DATE_MISMATCH
+analysis_reason_code == SOURCE1_EVENT_DATE_MISMATCH
 
 Then inspect:
 - prior/next event-marker fields
 - external authoritative event dates
 
 Determine whether:
-- Massive
+- source1
 or
-- yFinance
+- source2
 
 used the economically correct event date.
 
@@ -613,22 +617,22 @@ The evidence_summary MUST explicitly explain:
 - why the discrepancy appears non-actionable
 
 For PRICING_METHOD close-reversal rows where the input row evidence supports
-MASSIVE or YFINANCE as the more reliable close series:
+SOURCE1 or SOURCE2 as the more reliable close series:
 - expected_return_impact MUST be 0.0
 - research_confidence MUST be MEDIUM
 
 Interpretation:
 - expected_return_impact is 0.0 because no corporate action, cash distribution,
   or company news explains an economic event-return adjustment.
-- MEDIUM confidence means the row is actionable enough to prefer one vendor's
+- MEDIUM confidence means the row is actionable enough to prefer one data source's
   close series, but the conclusion is based on pricing-method reconciliation
-  rather than direct vendor documentation.
+  rather than direct data source documentation.
 
 Example:
 - A two-day close reversal has no dividend, split, spin-off, or news catalyst.
-- yFinance prices align with independent historical-price evidence.
+- source2 prices align with independent historical-price evidence.
 - Use event_detected = NO, event_bucket = PRICING_METHOD,
-  expected_return_impact = 0.0, likely_correct_source = YFINANCE,
+  expected_return_impact = 0.0, likely_correct_source = SOURCE2,
   research_confidence = MEDIUM.
 
 
@@ -639,18 +643,18 @@ NO ECONOMIC DIFFERENCE RULE
 
 Before assigning:
 - PRICING_METHOD
-- MASSIVE
-- YFINANCE
+- SOURCE1
+- SOURCE2
 
-the model MUST first determine whether Massive and yFinance are economically equivalent.
+the model MUST first determine whether source1 and source2 are economically equivalent.
 
 A row is ECONOMICALLY EQUIVALENT if ALL apply:
 
-- abs(ms_return - yf_return) < 0.000001
-- abs(ms_adj_close - yf_adj_close) < 0.000001
-- abs(ms_close - yf_close) < 0.000001
+- abs(source1_return - source2_return) < 0.000001
+- abs(source1_adj_close - source2_adj_close) < 0.000001
+- abs(source1_close - source2_close) < 0.000001
 - no material event-return discrepancy exists
-- no real-world event explains a vendor difference
+- no real-world event explains a data source difference
 
 If ECONOMICALLY EQUIVALENT:
 
@@ -662,11 +666,11 @@ If ECONOMICALLY EQUIVALENT:
 The model MUST NOT:
 - invent pricing-method explanations
 - invent normalization differences
-- imply vendor disagreement
-- imply one vendor is more correct
+- imply data source disagreement
+- imply one data source is more correct
 
 The evidence_summary should explicitly state that:
-- Massive and yFinance are economically identical
+- source1 and source2 are economically identical
 - no meaningful reconciliation issue exists
 - the row appears to be a non-actionable audit artifact or benign review trigger
 
@@ -675,7 +679,7 @@ PRICING_METHOD RESTRICTION
 ==================================================
 
 PRICING_METHOD may ONLY be used if:
-- Massive and yFinance materially differ economically
+- source1 and source2 materially differ economically
 AND
 - no real-world event explains the difference
 AND
@@ -692,18 +696,18 @@ PRICING_METHOD must NEVER be used when:
 LIKELY_CORRECT_SOURCE RULES
 ==================================================
 
-Use MASSIVE when:
-- Massive reconciles to the real-world event and yFinance does not
-- yFinance event-return math fails
-- external evidence supports Massive treatment
+Use SOURCE1 when:
+- source1 reconciles to the real-world event and source2 does not
+- source2 event-return math fails
+- external evidence supports source1 treatment
 
-Use YFINANCE when:
-- yFinance reconciles to the real-world event and Massive does not
-- Massive is missing an event adjustment
-- Massive event-return math fails
+Use SOURCE2 when:
+- source2 reconciles to the real-world event and source1 does not
+- source1 is missing an event adjustment
+- source1 event-return math fails
 
 Use BOTH when:
-- Massive and yFinance are economically equivalent
+- source1 and source2 are economically equivalent
 - differences are immaterial
 - both treatments are defensible
 
@@ -711,16 +715,16 @@ Use NEITHER when:
 - neither reconciles to the confirmed event
 
 Use UNCERTAIN only when:
-- the evidence truly does not support a vendor-specific conclusion
+- the evidence truly does not support a data-source-specific conclusion
 
-Do NOT use UNCERTAIN merely because direct vendor documentation is unavailable.
+Do NOT use UNCERTAIN merely because direct data source documentation is unavailable.
 
 When evidence is mixed, apply this tie-breaker order:
 
-1. Prefer the vendor whose event-return math reconciles to the confirmed event.
+1. Prefer the data source whose event-return math reconciles to the confirmed event.
 2. If both reconcile and differences are immaterial, use BOTH.
 3. If neither reconciles to a confirmed event, use NEITHER.
-4. Use UNCERTAIN only when the event itself or vendor treatment cannot be determined.
+4. Use UNCERTAIN only when the event itself or data source treatment cannot be determined.
 
 ==================================================
 OUTPUT SCHEMA
@@ -734,7 +738,7 @@ No JSON.
 
 Columns MUST be EXACTLY:
 
-ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,research_confidence,primary_source_url,secondary_source_url,evidence_summary,real_world_event
+ticker,date,event_detected,event_bucket,expected_return_impact,likely_correct_source,research_confidence,primary_url,secondary_url,evidence_summary,real_world_event
 
 ==================================================
 COLUMN RULES
@@ -756,8 +760,8 @@ PRICING_METHOD
 UNKNOWN
 
 likely_correct_source:
-MASSIVE
-YFINANCE
+SOURCE1
+SOURCE2
 BOTH
 NEITHER
 UNCERTAIN
@@ -776,16 +780,16 @@ evidence_summary MUST:
 - summarize sources reviewed
 - summarize findings
 - explain economic plausibility
-- explicitly reference Massive and yFinance
+- explicitly reference source1 and source2
 - explicitly explain the input row math
 
-If assigning MASSIVE or YFINANCE, explicitly include:
-- ms_return
-- yf_return
+If assigning SOURCE1 or SOURCE2, explicitly include:
+- source1_return
+- source2_return
 - diff_return
 - relevant event markers
 - expected return impact
-- why the chosen vendor reconciles correctly
+- why the chosen data source reconciles correctly
 
 ==================================================
 CONFIDENCE SCORING
@@ -822,12 +826,12 @@ Before finalizing EACH row verify:
 
 1. Real research was performed.
 2. The real-world event was investigated.
-3. ms_return and yf_return were compared.
+3. source1_return and source2_return were compared.
 4. diff_return sign convention was handled correctly.
 5. Event-return fields were evaluated.
 6. likely_correct_source follows from the input-derived calculation.
-7. evidence_summary explicitly names Massive and yFinance.
-8. No generic vendor wording exists.
+7. evidence_summary explicitly names source1 and source2.
+8. No generic data source wording exists.
 9. The conclusion is economically plausible.
 10. The wording would survive institutional audit scrutiny.
 

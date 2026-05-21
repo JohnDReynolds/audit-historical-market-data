@@ -38,7 +38,7 @@ def add_analysis_labels(
             pl.when(pl.col("analysis_reason_code") == "")
             .then(pl.lit(""))
             # Confidence is metadata about how mechanically isolated the current
-            # diagnostic is, not a claim that Massive or yFinance is correct.
+            # diagnostic is, not a claim that source1 or source2 is correct.
             # Real-world-only reason codes are included only after research has
             # had a chance to rewrite source ownership.
             .when(
@@ -88,35 +88,35 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
     return df_lf.with_columns(
         pl.when(~review_required_expr())
         .then(pl.lit(""))
-        # A high Massive-side anomaly with no material vendor disagreement is
-        # still review-worthy, but it should not be forced into a vendor-difference
-        # category that implies Massive and yFinance disagree economically.
+        # A high source1-side anomaly with no material data source disagreement is
+        # still review-worthy, but it should not be forced into a data-source-difference
+        # category that implies source1 and source2 disagree economically.
         .when(
             pl.col("diff_return").is_null()
             & (pl.col("heuristic_anomaly_score") >= schema.MIN_SCORE_TO_REVIEW)
         )
         .then(pl.lit("HIGH_SCORE_ANOMALY"))
         .when(pl.col("is_event_date_mismatch"))
-        .then(pl.lit("MS_EVENT_DATE_MISMATCH"))
+        .then(pl.lit("SOURCE1_EVENT_DATE_MISMATCH"))
         # Event-date mismatches precede close reversals because a dividend or
         # split placed one trading day off can create the same equal-and-opposite
         # pattern that would otherwise look like a close artifact.
         .when(pl.col("is_close_reversal"))
         .then(pl.lit("CLOSE_REVERSAL"))
-        .when(pl.col("is_ms_missing_event_adjustment"))
-        .then(pl.lit("MS_MISSING_EVENT"))
+        .when(pl.col("is_source1_missing_event_adjustment"))
+        .then(pl.lit("SOURCE1_MISSING_EVENT"))
         .when(
-            # A yFinance internal reconciliation break is assigned only after
-            # missing-Massive-event logic has had a chance to claim rows where
-            # yFinance's event explains the vendor return gap.
-            pl.col("is_yf_div_split_factor_mismatch") & ~pl.col("is_ms_div_split_factor_mismatch")
+            # A source2 internal reconciliation break is assigned only after
+            # missing-source1-event logic has had a chance to claim rows where
+            # source2's event explains the data source return gap.
+            pl.col("is_source2_div_split_factor_mismatch") & ~pl.col("is_source1_div_split_factor_mismatch")
         )
-        .then(pl.lit("YF_DIV_SPLIT_RETURN_MISMATCH"))
+        .then(pl.lit("SOURCE2_DIV_SPLIT_RETURN_MISMATCH"))
         .when(
             pl.col("has_div_split_mismatch")
-            & pl.col("has_ms_event")
-            & pl.col("has_yf_event")
-            # If both vendors carry same-day event markers and the return gap is
+            & pl.col("has_source1_event")
+            & pl.col("has_source2_event")
+            # If both data sources carry same-day event markers and the return gap is
             # tiny, the best pre-research explanation is usually event
             # representation, grouping, or marker semantics, not a broken
             # adjustment chain.
@@ -126,40 +126,40 @@ def add_analysis_reason_code(df_lf: pl.LazyFrame) -> pl.LazyFrame:
         .when(pl.col("is_event_denominator_mismatch"))
         .then(pl.lit("EVENT_DENOMINATOR_MISMATCH"))
         # Partial/extra event categories require same-day markers from both
-        # vendors and signed return math that reconciles to the missing or excess
+        # data sources and signed return math that reconciles to the missing or excess
         # event component. They are more specific than generic source mismatch.
-        .when(pl.col("is_ms_partial_event"))
-        .then(pl.lit("MS_PARTIAL_EVENT"))
-        .when(pl.col("is_ms_extra_event"))
-        .then(pl.lit("MS_EXTRA_EVENT"))
+        .when(pl.col("is_source1_partial_event"))
+        .then(pl.lit("SOURCE1_PARTIAL_EVENT"))
+        .when(pl.col("is_source1_extra_event"))
+        .then(pl.lit("SOURCE1_EXTRA_EVENT"))
         .when(pl.col("is_adj_factor_mismatch"))
-        .then(pl.lit("MS_ADJ_FACTOR_CONTINUITY"))
+        .then(pl.lit("SOURCE1_ADJ_FACTOR_CONTINUITY"))
         .when(pl.col("has_div_split_mismatch"))
         # Remaining event-marker disagreements are real review items, but without
         # more mechanical evidence or external research the pipeline should not
-        # infer which vendor is economically correct.
+        # infer which data source is economically correct.
         .then(pl.lit("EVENT_SOURCE_MISMATCH"))
-        .otherwise(pl.lit("MS_RETURN_METHOD_UNRESOLVED"))
+        .otherwise(pl.lit("SOURCE1_RETURN_METHOD_UNRESOLVED"))
         .alias("analysis_reason_code")
     )
 
 
-def add_massive_fix_guidance(
+def add_source1_fix_guidance(
     frame: _FrameT,
-    massive_needs_fix_expr: pl.Expr,
+    source1_needs_fix_expr: pl.Expr,
 ) -> _FrameT:
-    """Add Massive remediation flags and guidance text.
+    """Add source1 remediation flags and guidance text.
 
     Args:
         frame:
             Return-audit frame with ``analysis_reason_code`` assigned.
 
-        massive_needs_fix_expr:
-            Expression used to assign ``massive_needs_fix`` for the
+        source1_needs_fix_expr:
+            Expression used to assign ``source1_needs_fix`` for the
             current stage of the audit pipeline.
 
     Returns:
-        Frame with Massive remediation flag, summary, explanation, action,
+        Frame with source1 remediation flag, summary, explanation, action,
         and priority columns.
     """
     existing_columns: list[str]
@@ -172,64 +172,64 @@ def add_massive_fix_guidance(
     if "likely_correct_source" not in existing_columns:
         frame = cast(_FrameT, frame.with_columns(pl.lit("").alias("likely_correct_source")))
 
-    # Research can clear pre-research Massive suspicion when it concludes Massive
+    # Research can clear pre-research source1 suspicion when it concludes source1
     # is correct or economically equivalent. Conversely, research that names
-    # yFinance or neither source as correct should keep the row actionable for
-    # Massive review even if the pre-research diagnostic was generic.
-    research_says_massive_correct: pl.Expr = pl.col("likely_correct_source").is_in(
-        ["MASSIVE", "BOTH"]
+    # source2 or neither source as correct should keep the row actionable for
+    # source1 review even if the pre-research diagnostic was generic.
+    research_says_source1_correct: pl.Expr = pl.col("likely_correct_source").is_in(
+        ["SOURCE1", "BOTH"]
     )
-    research_says_massive_incorrect: pl.Expr = pl.col("likely_correct_source").is_in(
-        ["YFINANCE", "NEITHER"]
+    research_says_source1_incorrect: pl.Expr = pl.col("likely_correct_source").is_in(
+        ["SOURCE2", "NEITHER"]
     )
-    close_reversal_supports_massive_fix: pl.Expr = (
-        (pl.col("analysis_reason_code") == "CLOSE_REVERSAL") & research_says_massive_incorrect
+    close_reversal_supports_source1_fix: pl.Expr = (
+        (pl.col("analysis_reason_code") == "CLOSE_REVERSAL") & research_says_source1_incorrect
     )
     # Real-world research has higher authority than deterministic pre-research
-    # suspicion. If research says Massive is correct or economically equivalent,
-    # clear Massive remediation; if research says yFinance or neither source is
-    # correct, keep/remap the row as a Massive fix candidate.
-    research_aware_massive_needs_fix_expr: pl.Expr = (
-        pl.when(research_says_massive_correct)
+    # suspicion. If research says source1 is correct or economically equivalent,
+    # clear source1 remediation; if research says source2 or neither source is
+    # correct, keep/remap the row as a source1 fix candidate.
+    research_aware_source1_needs_fix_expr: pl.Expr = (
+        pl.when(research_says_source1_correct)
         .then(pl.lit(False))
-        .when(research_says_massive_incorrect)
+        .when(research_says_source1_incorrect)
         .then(pl.lit(True))
-        .otherwise(massive_needs_fix_expr)
+        .otherwise(source1_needs_fix_expr)
     )
 
     return cast(
         _FrameT,
         frame.with_columns(
-            research_aware_massive_needs_fix_expr.alias("massive_needs_fix"),
-            # Close reversals are not pre-research Massive fixes by default. The
+            research_aware_source1_needs_fix_expr.alias("source1_needs_fix"),
+            # Close reversals are not pre-research source1 fixes by default. The
             # special branch below emits guidance only when external research says
-            # Massive is the incorrect side of the reversal.
-            pl.when(research_says_massive_correct)
+            # source1 is the incorrect side of the reversal.
+            pl.when(research_says_source1_correct)
             .then(pl.lit(""))
-            .when(close_reversal_supports_massive_fix)
+            .when(close_reversal_supports_source1_fix)
             .then(
-                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].massive_problem_summary)
+                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].source1_problem_summary)
             )
-            .otherwise(_reason_code_text_expr("massive_problem_summary"))
-            .alias("massive_problem_summary"),
-            pl.when(research_says_massive_correct)
+            .otherwise(_reason_code_text_expr("source1_problem_summary"))
+            .alias("source1_problem_summary"),
+            pl.when(research_says_source1_correct)
             .then(pl.lit(""))
-            .when(close_reversal_supports_massive_fix)
+            .when(close_reversal_supports_source1_fix)
             .then(
-                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].massive_why_incorrect)
+                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].source1_why_incorrect)
             )
-            .otherwise(_reason_code_text_expr("massive_why_incorrect"))
-            .alias("massive_why_incorrect"),
-            pl.when(research_says_massive_correct)
+            .otherwise(_reason_code_text_expr("source1_why_incorrect"))
+            .alias("source1_why_incorrect"),
+            pl.when(research_says_source1_correct)
             .then(pl.lit(""))
-            .when(close_reversal_supports_massive_fix)
+            .when(close_reversal_supports_source1_fix)
             .then(
-                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].massive_fix_action)
+                pl.lit(schema.REASON_CODES["CLOSE_REVERSAL"].source1_fix_action)
             )
-            .otherwise(_reason_code_text_expr("massive_fix_action"))
-            .alias("massive_fix_action"),
-            _massive_fix_priority_expr(research_aware_massive_needs_fix_expr).alias(
-                "massive_fix_priority"
+            .otherwise(_reason_code_text_expr("source1_fix_action"))
+            .alias("source1_fix_action"),
+            _source1_fix_priority_expr(research_aware_source1_needs_fix_expr).alias(
+                "source1_fix_priority"
             ),
         ),
     )
@@ -243,7 +243,18 @@ def _reason_code_text_expr(
 
     The registry holds the text once, while Polars still needs an expression
     tree to assign row-specific strings. ``CLOSE_REVERSAL`` is skipped here
-    because it has a special research-aware branch in ``add_massive_fix_guidance``.
+    because it has a special research-aware branch in ``add_source1_fix_guidance``.
+
+    Args:
+        reason_code_field:
+            Name of the ``ReasonCode`` text field to read.
+
+        skip_reason_codes:
+            Reason codes whose text should not be emitted by this generic
+            expression.
+
+    Returns:
+        Expression that maps ``analysis_reason_code`` to the requested text.
     """
     text_expr: pl.Expr = pl.lit("")
 
@@ -305,7 +316,7 @@ def add_review_columns(frame: _FrameT) -> _FrameT:
 
 
 def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
-    """Refresh analysis labels, Massive fix guidance, and review columns.
+    """Refresh analysis labels, source1 fix guidance, and review columns.
 
     Args:
         df:
@@ -313,7 +324,7 @@ def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
             reason-code classification.
 
     Returns:
-        DataFrame with analysis-sheet, confidence, Massive remediation, and
+        DataFrame with analysis-sheet, confidence, source1 remediation, and
         review columns synchronized to the final reason code.
     """
     df = add_analysis_labels(
@@ -321,13 +332,13 @@ def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
         include_real_world_reason_codes=True,
     )
 
-    df = add_massive_fix_guidance(
+    df = add_source1_fix_guidance(
         df,
         # After research, generic EVENT_SOURCE_MISMATCH is not enough by itself
-        # to say Massive needs a fix. It must have been converted to a
-        # Massive-focused reason code or supported by likely_correct_source.
+        # to say source1 needs a fix. It must have been converted to a
+        # source1-focused reason code or supported by likely_correct_source.
         pl.col("analysis_reason_code").is_in(
-            schema.reason_codes_in_group("massive_fix_post_research")
+            schema.reason_codes_in_group("source1_fix_post_research")
         ),
     )
 
@@ -336,23 +347,23 @@ def refresh_return_analysis_columns(df: pl.DataFrame) -> pl.DataFrame:
     return df.drop(
         [
             "real_world_event_return_match",
-            "real_world_event_supports_massive",
-            "real_world_event_supports_yfinance",
+            "real_world_event_supports_source1",
+            "real_world_event_supports_source2",
         ]
     )
 
 
-def _massive_fix_priority_expr(massive_needs_fix_expr: pl.Expr) -> pl.Expr:
-    """Return the expression that assigns Massive fix priority.
+def _source1_fix_priority_expr(source1_needs_fix_expr: pl.Expr) -> pl.Expr:
+    """Return the expression that assigns source1 fix priority.
 
     Args:
-        massive_needs_fix_expr:
-            Expression used to decide whether Massive fix guidance applies.
+        source1_needs_fix_expr:
+            Expression used to decide whether source1 fix guidance applies.
 
     Returns:
-        Polars expression that assigns the Massive fix priority bucket.
+        Polars expression that assigns the source1 fix priority bucket.
     """
-    return pl.when(massive_needs_fix_expr).then(_triage_priority_expr()).otherwise(pl.lit(""))
+    return pl.when(source1_needs_fix_expr).then(_triage_priority_expr()).otherwise(pl.lit(""))
 
 
 def _triage_priority_expr() -> pl.Expr:
@@ -361,13 +372,13 @@ def _triage_priority_expr() -> pl.Expr:
     Returns:
         Polars expression that assigns a HIGH, MEDIUM, LOW, or blank priority.
     """
-    # A material Massive/yFinance return difference is always HIGH. Heuristic
+    # A material source1/source2 return difference is always HIGH. Heuristic
     # anomaly rows are lower priority because they may be real market moves even
     # when both sources agree.
     # A heuristic anomaly score >= 8 is particularly suspicious.
     is_high_score = pl.col("heuristic_anomaly_score") >= 8
 
-    # By definition, HIGH_SCORE_ANOMALY has no diff_return. So if both vendors appear
+    # By definition, HIGH_SCORE_ANOMALY has no diff_return. So if both data sources appear
     # correct, then the anomaly is considered low-actionable and should not receive
     # MEDIUM priority.
     might_be_actionable = ~(

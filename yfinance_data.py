@@ -95,6 +95,9 @@ class YFinanceData:
         self.dividends = self._load_dividends()
         self.ohlcv = self._load_ohlcv()
         self.splits = self._load_splits()
+        self.source2_prices = self._load_source2_prices()
+        self.source2_dividends = self._load_source2_dividends()
+        self.source2_splits = self._load_source2_splits()
 
     def _file_path(self, base_file_path: str) -> str:
         """Build a date-specific CSV file path.
@@ -107,6 +110,88 @@ class YFinanceData:
             File path with appended date range suffixes.
         """
         return f"{base_file_path}.{self.from_date}.{self.to_date}.csv"
+
+    def _load_source2_prices(self) -> pl.LazyFrame:
+        """Write and load normalized source2 OHLCV rows.
+
+        yFinance is the default source2 adapter. It provides both raw close and
+        adjusted close, so this is a schema normalization step.
+
+        Returns:
+            LazyFrame containing ``identifier``, ``date``, OHLCV, and
+            ``adjusted_close``.
+        """
+        file_path = self._file_path(schema.PATH_SOURCE2_PRICES)
+
+        if self.always_download or not Path(file_path).exists():
+            (
+                self.ohlcv.select(
+                    pl.col("ticker").alias("identifier"),
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "adjusted_close",
+                )
+                .collect()
+                .write_csv(file_path)
+            )
+
+        return pl.scan_csv(file_path)
+
+    def _load_source2_dividends(self) -> pl.LazyFrame:
+        """Write and load normalized source2 dividend rows.
+
+        yFinance exposes cash dividends without a separate type field.  The
+        normalized ``dividend_type`` is therefore ``ca`` for cash amount.
+
+        Returns:
+            LazyFrame containing ``identifier``, ``ex_date``, ``dividend_type``,
+            and ``amount``.
+        """
+        file_path = self._file_path(schema.PATH_SOURCE2_DIVIDENDS)
+
+        if self.always_download or not Path(file_path).exists():
+            (
+                self.dividends.select(
+                    pl.col("ticker").alias("identifier"),
+                    pl.col("ex_dividend_date").alias("ex_date"),
+                    pl.lit("ca").alias("dividend_type"),
+                    pl.col("cash_amount").alias("amount"),
+                )
+                .collect()
+                .write_csv(file_path)
+            )
+
+        return pl.scan_csv(file_path)
+
+    def _load_source2_splits(self) -> pl.LazyFrame:
+        """Write and load normalized source2 split rows.
+
+        yFinance split values are already ratios: ``4.0`` means a 4-for-1 split
+        and ``0.5`` means a 1-for-2 reverse split.
+
+        Returns:
+            LazyFrame containing ``identifier``, ``ex_date``, ``split_type``, and
+            ``amount``.
+        """
+        file_path = self._file_path(schema.PATH_SOURCE2_SPLITS)
+
+        if self.always_download or not Path(file_path).exists():
+            (
+                self.splits.select(
+                    pl.col("ticker").alias("identifier"),
+                    pl.col("execution_date").alias("ex_date"),
+                    pl.lit("sp").alias("split_type"),
+                    pl.col("split_ratio").alias("amount"),
+                )
+                .collect()
+                .write_csv(file_path)
+            )
+
+        return pl.scan_csv(file_path)
 
     def _inclusive_yfinance_end_date(self) -> str:
         """Return the yFinance end date needed to include ``self.to_date``.
